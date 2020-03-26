@@ -11,5 +11,6 @@ https://www.kaggle.com/allen-institute-for-ai/CORD-19-research-challenge/tasks?t
 # Data 
 
 
-# Code hackaton
+# Hackaton for Good
+Contains code for a Search Engine as built for the Hackaton for Good Challenge
 
