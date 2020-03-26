@@ -1,5 +1,6 @@
 # Darvirian
 The Darvirian team: Joseph, Yao, Henry
+Working on a good cause!
 
 # Challenge
 Kaggle CORD-19-research-challenge: What do we know about virus genetics, origin, and evolution?
@@ -11,5 +12,6 @@ https://www.kaggle.com/allen-institute-for-ai/CORD-19-research-challenge/tasks?t
 # Data 
 
 
-# Code hackaton
+# Hackaton for Good
+Contains code for a Search Engine as built for the Hackaton for Good Challenge
 
