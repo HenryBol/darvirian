@@ -1,5 +1,6 @@
 # Darvirian
 The Darvirian team: Joseph, Yao, Henry
+Working on a good cause!
 
 # Challenge
 Kaggle CORD-19-research-challenge: What do we know about virus genetics, origin, and evolution?
