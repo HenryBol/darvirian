@@ -86,8 +86,11 @@ NaN_list_rows = df.isnull().sum(axis=1).sort_values(ascending = False)
 df = df.replace(np.nan, '', regex=True)
 
 # Clean text; check add characters e.g. '-' add or not (also used as hyphen)
-df.Raw_Text = [re.sub(r"[^a-zA-Z ]", "", file) for file in df] 
-#df.Raw_Text = [re.sub(r"[^a-zA-Z0-9 -]", "", file) for file in df.Raw_Text] 
+# df.Raw_Text = [re.sub(r"[^a-zA-Z ]", "", file) for file in df] 
+# df.Raw_Text = [re.sub(r"[^a-zA-Z0-9 -]", "", file) for file in df.Raw_Text] 
+# HB 290320 the above lines gave an error; I changed dit to:
+df.Raw_Text = [re.sub(r'[^a-zA-Z ]', '', str(x)) for x in df.Raw_Text]
+
 
 # Check: search in original df (PyPDF2 bug)
 #df[df['Raw_Text'].str.contains('slachtoer')] 
@@ -110,14 +113,14 @@ alldocslist = alldocslist.tolist()
 alldocslist_cleanlist = alldocslist.copy()
 
 # Joining pages of one doc
-pagess = alldocslist.copy()
-#a = [' '.join(pages) for pages in pagess]
-a = [' '.join(pages) for pages in pagess if pages is not None]
-alldocslist = a.copy()
+# HB 290320 the code below turns words into seperate characters, therefore, I disabled this code part
+# pagess = alldocslist.copy()
+# #a = [' '.join(pages) for pages in pagess]
+# a = [' '.join(pages) for pages in pagess if pages is not None]
+# alldocslist = a.copy()
 
 df['Sentences'] = None
 
-i = 0
 for i in range(len(alldocslist)):
     sent_text = sent_tokenize(alldocslist[i])
     df.Sentences[i] = sent_text
@@ -143,6 +146,8 @@ for doc in alldocslist:
     plot_data[index].append(tokentext)
     index +=1
 print(plot_data[0][1])
+
+print(plot_data[1][2])
 
 ##### check Reuters example for structure #####
 #len(reuters.fileids())
@@ -232,7 +237,7 @@ for doc in plottest:
             except:
                 worddic[word] = []
                 worddic[word].append([index,positions,idfs])
-# The index creates a dic with each word as a KEY and a list of doc indexes, word positions, and td-idf score as VALUES
+# The index creates a dictionary with each word as a KEY and a list of doc indexes, word positions, and td-idf score as VALUES
 worddic['diefstal']
 worddic['kind']
 worddic['jurisprudentie']
