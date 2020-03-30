@@ -23,3 +23,5 @@ The AWS S3 bucket 'darivian' has all documents in one folder
 # Hackaton for Good
 Contains code for a Search Engine as built for the Hackaton for Good Challenge
 
+# The Thinking Machine
+A space for thought and more
