@@ -1,16 +1,14 @@
 # Kaggle challenge Covid-19
 # Team: Darvirian
-# Date: April 1st, 2020
+# Date: April 2nd, 2020
 
 # Contents:
-# PART I: Preparing the documents/tokenizing
-# PART II: CREATING THE INVERSE-INDEX: creates 'worddic' (dict with all words: vectorized and in which document(s) it occurs on which position(s) and tfidf)
-# PART III: The Search Engine: function 'search'
-# PART IV: Rank and return (rules based): function 'rank' based on 5 rules and providing summaries
-# CASE I: NR: get all information on a certain topic; e.g. prostitution
-# CASE II: Student: get all information about victims/ perpetrators
-# CASE III: Media: has NR a point of view taking-in a passport of a delinquent of sexual violence against children so that he/ she is not able to travel.
-# PART V: Rank and return (machine learning) - Work in Progress
+# PART I: Preprocessing
+# PART II Tokenize in sentences and words
+# PART III: Creating the inverse-index: creates 'worddic' (dict with all words: vectorized and in which document(s) it occurs on which position(s) and tfidf)
+# PART IV: The Search Engine: function 'search'
+# PART V: Rank and return (rules based): function 'rank' based on 5 rules and providing summaries
+# CASE 0: Sustainable risk reduction strategies
 
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
 
@@ -23,6 +21,7 @@ import pandas as pd
 import numpy as np 
 import string
 import re
+import pickle
 
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
@@ -33,7 +32,7 @@ from nltk.corpus import stopwords
 
 
 # =============================================================================
-# PART I: Preprocessing
+# LOAD THE DATA
 # =============================================================================
 ## Read docs from CORD-19
 # import os
@@ -45,6 +44,10 @@ df.columns
 df['Raw_Text'] = df['text']
 ## << TEMP CORD-19 DATA
 
+
+# =============================================================================
+# PART I: PREPROCESSING
+# =============================================================================
 # Keep only 10 docs to speed up processing for development purposes
 # df = df[:10]
 
@@ -57,16 +60,15 @@ df = df.replace(np.nan, '', regex=True)
 # Clean text (keep '.' for tokenize sentences); check add characters e.g. '-' add or not (also used as hyphen)
 # TODO check adding figures (0-9) which increases the number of unique word significantly (and slow the tdidf process)
 # df.Raw_Text = [re.sub(r'[^a-zA-Z0-9. ]', '', str(x)) for x in df.Raw_Text]
-df.Raw_Text = [re.sub(r'[^a-zA-Z. ]', '', str(x)) for x in df.Raw_Text] 
+df.Raw_Text = [re.sub(r'[^a-zA-Z.\- ]', '', str(x)) for x in df.Raw_Text] 
 
 # Remove '\n' 
 df['Raw_Text'] = [x.replace('\n', '') for x in df['Raw_Text']]
 
 
-
 # =============================================================================
-# PART I: PREPROCESSING
-# ============================================
+# PART II: TOKENIZE IN SENTENCES AND WORDS
+# =============================================================================
 # Remove punctuation from all DOCs and create alldocslist
 #exclude = set(string.punctuation)
 alldocslist = list(df.Raw_Text)
@@ -123,7 +125,7 @@ plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
 
 
 # =============================================================================
-# PART II: CREATING THE INVERSE-INDEX
+# PART III: CREATING THE INVERSE-INDEX
 # =============================================================================
 # Create inverse index which gives document number for each document and where word appears
 
@@ -161,16 +163,7 @@ plottest = plot_data[0:1000]
 from collections import defaultdict
 worddic = defaultdict(list)
 
-# for doc in plottest:
-#     for word in wordsunique:
-#         if word in doc:
-#             word = str(word)
-#             index = plottest.index(doc)
-#             positions = list(np.where(np.array(plottest[index]) == word)[0])
-#             idfs = tfidf(word,doc,plottest)
-#             worddic[word].append([index,positions,idfs])
-
-# Faster loop
+# Loop (for reference and to make the comprehension (see below) a bit more understandable)
 # for doc in plottest:
 #     for word in set(doc): # set provides unique words in doc 
 #         word = str(word)
@@ -180,27 +173,27 @@ worddic = defaultdict(list)
 #         worddic[word].append([index,positions,idfs])
 
 # Create the dictionary via comprehension to speed up processing
-import time
-start = time.time()
-# [worddic[word].append([plottest.index(doc), list(np.where(np.array(plottest[plottest.index(doc)]) == word)[0]), tfidf(word,doc,plottest), ]) for doc in plottest for word in wordsunique if word in doc]
-[worddic[word].append([plottest.index(doc), list(np.where(np.array(plottest[plottest.index(doc)]) == word)[0]), tfidf(word,doc,plottest), ]) for doc in plottest for word in set(doc)]
-end = time.time()
-print(end - start)
+# import time
+# start = time.time()
+# # TODO speed up
+# [worddic[word].append([plottest.index(doc), list(np.where(np.array(plottest[plottest.index(doc)]) == word)[0]), tfidf(word,doc,plottest), ]) for doc in plottest for word in set(doc)]
+# end = time.time()
+# print(end - start) # duration 3.36 hours for full biorxiv_clean
+
+
+## Save pickle file
+# f = open("Data/output/worddic_biorxiv_clean_200402.pkl","wb")
+# pickle.dump(worddic,f)
+# f.close()
+
+## Load pickle file worddic
+pickle_in = open("Data/output/worddic_biorxiv_clean_200402.pkl","rb")
+worddic = pickle.load(pickle_in) 
 
 # Check
 worddic['covid']
-plottest[7][280]
+plottest[882][38]
 len(worddic.keys())
-
-# Save pickle file
-import pickle
-f = open("output/worddic200401.pkl'l","wb")
-pickle.dump(worddic,f)
-f.close()
-
-## Load pickle file worddic
-# pickle_in = open("output/worddic_a-worddic200401.pkl","rb")
-# worddic = pickle.load(pickle_in) 
 
 
 ## Split dictionary into keys and values 
@@ -208,8 +201,6 @@ keys = worddic.keys()
 values = worddic.values() 
 items = worddic.items()
 worddic_list = list(worddic.items())
-
-help(items)
 
 # printing keys and values seperately 
 print("keys : ", str(keys)) 
@@ -234,7 +225,7 @@ worddic_list[-1]
 
 
 # =============================================================================
-# PART III: The Search Engine
+# PART IV: The Search Engine
 # =============================================================================
 # create word search which takes multiple words and finds documents that contain both along with metrics for ranking:
 
@@ -314,6 +305,7 @@ def search(searchsentence):
                             closedic[index] = []
                             closedic[index].append(positions)
 
+            # TODO check fdic order, seems always to be 0
             x = 0
             fdic = {}
             for index in y:
@@ -345,44 +337,51 @@ def search(searchsentence):
 
 ## Search    
 search('Full-genome phylogenetic analysis')[1]
+search('phylogenetic analysis of full genome')[1]
 search('Full-genome phylogenetic analysis')
 search('genome')
-
+search('Full-genome')
+search('Fullgenome')
+search('covid')
+search('PCR')
+search('pathogens')
+search('GISAID')
 
 # TODO CORD keywords
 # 0 return will give back the search term, the rest will give back metrics (see above)
 # Save metrics to dataframe for use in ranking and machine learning 
-result1 = search('kinderen diefstal kenmerken Oost-Europa')
-result2 = search('kinderen')
-result3 = search('diefstal')
-result4 = search('kenmerken')
-result5 = search('Oost-Europa') # hyphen is not included in text
-result6 = search('uitbuiting')
-result7 = search('ouders')
-result8 = search('prostitutie')
-df_search = pd.DataFrame([result1,result2,result3,result4,result5,result6,result7,result8])
+result1 = search('Full-genome phylogenetic analysis')
+result2 = search('phylogenetic analysis of full genome')
+result3 = search('Virus genome analysis')
+result4 = search('genome')
+result5 = search('phylogenetic')
+result6 = search('evolutionary relationship')
+result7 = search('pathogens')
+result8 = search('GISAID')
+df_search = pd.DataFrame([result1, result2, result3, result4, result5, result6, result7, result8])
+# TODO check column names with respect to output of search function
 df_search.columns = ['search term', 'actual_words_searched','num_occur','percentage_of_terms','td-idf','word_order']
 df_search
 
-df_search.to_excel("output/search_results.xlsx")
+df_search.to_excel("Data/output/search_results.xlsx")
 
 # Look to see if the top documents seem to make sense
 alldocslist[1]
 
 ## Double check: search in original df
-df[df['Raw_Text'].str.contains('diefstal')] 
-# ok (file 37 and 38 are the same)
+df[df['Raw_Text'].str.contains('genome')] 
+df[df['Raw_Text'].str.contains('phylogenetic')] 
+df[df['Raw_Text'].str.contains('Covid')]  # only 9 papers
 
-df.columns
 
 # =============================================================================
-# PART IV: Rank and return (rules based)
+# PART V: Rank and return (rule based)
 # =============================================================================
 # Create a simple (non-machine learning) rank and return function
 
 def rank(term):
     results = search(term)
-    print(results)
+    # print(results)
     # get metrics 
     num_score = results[2]
     per_score = results[3]
@@ -435,281 +434,73 @@ def rank(term):
         for top in othertops:
             if top not in final_candidates:
                 final_candidates.insert(len(final_candidates),top)
-                
+
+    print('\nRanked papers (document number):', final_candidates,)
+
     for index, results in enumerate(final_candidates):
         if index < 5:
-            print('\nfinal candidates:', final_candidates)
-#            print("RESULT", index + 1, ":", alldocslist[results][0:100],"...")
-            print("RESULT", index + 1, ":", df.Title[results])
+
+            print('\n\nRESULT {}:'. format(index + 1), df.title[results])
 
             search_results = search_sentence(results, term)
-            print("Sentences:", search_results)
-            print(df.URL[results]) # link to PDF document in directory
+            print('\nSentences:', search_results)
 
-            # TODO check correct information
-            page = df.webpage[results] # get the publication webpage ('summary article') of where the PDF is located as a download
-            print('Samenvatting:', df_webpages.type[page], df_webpages.date[page], df_webpages.header[page], df_webpages.intro[page], df_webpages.url[page])
+            print('\nPaper ID:', df.paper_id[results], '(Document no: {})'. format(results))
+            print('\nAuthors:', df.authors[results], '\n')
+            # print('Affiliations', df.affiliations[results])
+            print(df.abstract[results]) # Abstract
 
-# TODO
-df_pdfs = pd.read_excel(r'output/all_PDFs.xlsx') # file with all 190 PDFs as scraped from the website
-# Add mapping column in df to df_pdfs
-for i in range(len(df_pdfs)):
-    string = df_pdfs.urls[i].rpartition('/')[2] # title of PDF only
-    df_pdfs.loc[i,'url_title'] = string
-    pointer = df.loc[df['PDF_name'] == string].index
-    df.loc[pointer, 'Indexes_to_df_pdfs'] = i
-
-# TODO
-# Include all data from df_pdfs in df
-for i in range(len(df)):
-    j = df.loc[i, 'Indexes_to_df_pdfs']
-    df.loc[i, 'Title'] = df_pdfs.titles[j]
-    df.loc[i, 'URL'] = df_pdfs.urls[j]
-    df.loc[i, 'webpage'] = df_pdfs.webpage[j]
-
-df_webpages = pd.read_excel(r'output/website_content.xlsx') # file with all 139 webpages as scraped from the website
-## Include all data from df_webpages in df
-#i = 0
-#for i in range(len(df)):
-#    j = df.loc[i, 'webpage'].astype(int)
-#    list_webpage = df_webpages.iloc[j]
-##    df.iloc[i, 'Webpage'] = list_webpage
-#
-#df.at[i, 'Webpage'] = list_webpage.astype(object)
-#df.columns
-#df = df[df.columns[:-1]]
-#type(list_webpage)
-#print(list_webpage)
-
-df.columns
-df_webpages.columns
-df['Meta_Data'][0]
-
+# Find sentence of search word(s)
 def search_sentence(doc_number, search_term):
     sentence_index = []
+    search_list = search_term.split()
     for sentence in df.Sentences[doc_number]:
-        if search_term.lower() in sentence.lower():
-            sentence_index.append(sentence) # df.Sentences[doc_number].index(sentence)
+        for search_word in search_list:
+            if search_word.lower() in sentence.lower():
+                sentence_index.append(sentence) # df.Sentences[doc_number].index(sentence)
     return sentence_index
 
-### 
-# check on function seach_sentence
-###
-# see https://stackoverflow.com/questions/40088559/python-check-if-two-words-are-in-a-string
-    
-#list_check = search_sentence(95, 'trauma')
-#list_check = search_sentence(35, 'kinderen')
-#list_check = search_sentence(99, 'Robert M.')
-list_check = search_sentence(14, 'kinderen diefstal')
-search_term = 'herdenkingen verleden heden'
+
+# Check
+search_term = 'Full-genome phylogenetic'
 results = search(search_term)
 print(results)
-doc_with_sentences = df.Sentences[26]
-doc_number = 26
-#search_term = 'heden' 
-search_zinnen = search_sentence(26, search_term)
+doc_number = 1
+search_sentence(doc_number, search_term)
 
-#sentence_index = []
-#for sentence in df.Sentences[doc_number]:
-#    print(sentence)
-#    if search_term.lower() in sentence.lower():
-#        sentence_index.append(sentence) # df.Sentences[doc_number].index(sentence)
-
-
-## Example of output 
-# return(searchsentence,words,fullcount_order,combocount_order,fullidf_order,fdic_order)
-search('kinderen diefstal kenmerken Oost-Europa')
-search('kinderen')
-search('Oost-Europa')
-search('Robert M.')
-search('Vera')
-search('NaN')
-search('kinderen diefstal')
-
-rank('kinderen diefstal kenmerken Oost-Europa')
-rank('kinderen diefstal')
-rank('misbruik diefstal')
-rank('misbruik kinderen')
-rank('geweld opsporing ')
-rank('kinderen')
-rank('kind')
-
-rank('kinderen')
-rank('aruba')
-rank('trauma')
-rank('Robert M.')
-rank('Robert')
-rank('Vera')
-rank('OostEuropa')
-rank('Robert misbruik')
-
-rank('herdenkingen verleden heden')
+search_term = 'genome'
+# search_term = 'Full-genome'
+results = search(search_term)
+print(results)
+doc_number = 1
+search_sentence(doc_number, search_term)
 
 
-# Example
-search_term = 'Robert'
-rank(search_term)
-# final candidates (i.e. top5): [68, 161, 65, 11, 14]
-# 68 highest ranking PDF: 
-# RESULT 1 : First Report on Child Pornography
-# Sentences: ['Also known as the “Robert M.” case, after the chief suspect.', '351 \n\nSee also 3.7.5 regarding the impact upon and support provided to parents of victims in the sexual abuse \ncases of ‘Benno L.’ and ‘Robert M.’ (the Amsterdam sexual abuse case).', '363 The extent of these \n\n356 \n\n357 \n\n358 \n\n359 \n360 \n361 \n362 \n363 \n\nRobert M. zeven weken in Pieter Baan Centrum [Robert M. to stay seven weeks in Pieter Baan Centrum], nu.nl, \n5 August 2011.', 'It is notable that little attention has been devoted to the child pornography aspect of the sexual abuse \ncommitted by Robert M.\nParliamentary Papers II 2005/06, 29 326, no.6.', 'As a result \nof the public reactions to major abuse cases, such as those surrounding the cases of ‘Robert M.’ and \n‘Benno L.’, paedophiles can end up being forced into even greater isolation95.', 'The work of the sex offences di-\nvision in Amsterdam included analysing the (child abuse) images found, in order to identify the victims, \nand for the purpose of the (detection and) prosecution of Robert M. and his partner.', 'There were sufficient indications present to suggest that Robert M. was maintaining a network with \nlike-minded individuals.', 'The analysis of the e-mail and chatroom traffic was used to \nreveal the individuals with whom Robert M. had contact, and what had been exchanged.', 'The National Crime \nSquad of the National Police Services Agency (KLPD) assembled a multi-disciplinary investigation \nteam in order to map out the (international) network of the suspected sex offender Robert M. The \ninvestigation team consisted of digital technology experts from the National Crime Squad, the \nSpecialist Criminal Investigations Applications Department (DSRT), the Amsterdam-Amstelland \npolice force, sex offence specialists from the Department of International Police Information, and \ndetectives from other KLPD services.', '180\n\nChild PornograPhy \n\nFirst report oF the Dutch NatioNal rapporteur\n\nThe Amsterdam sexual abuse case surrounding Robert M. is a recent example of the above-\nmentioned problem.']
-# Link to PDF https://www.nationaalrapporteur.nl/binaries/child-pornography-tcm64-426462_tcm23-34786.pdf
-# Summary: webpage ('summary article') that contains download link to pdf 68
-# Samenvatting: Rapport 12-10-2011 Eerste Rapportage Kinderpornografie  
-# Kinderpornografie is seksueel geweld tegen kinderen en moet op geïntegreerde wijze worden aangepakt. Dat is de belangrijkste conclusie van de Nationaal Rapporteur naar aanleiding van haar onderzoek naar kinderpornografie.
-# https://www.nationaalrapporteur.nl/Publicaties/Eersterapportagekinderpornografie/index.aspx
+## Examples
+# Search return(searchsentence,words,fullcount_order,combocount_order,fullidf_order,fdic_order)
+search('Full-genome phylogenetic analysis')
+search('Full-genome phylogenetic')
+search('genome')
+search('covid')
+search('PCR')
+search('pathogens')
+search('GISAID')
+
+# Rank
+rank('Full-genome phylogenetic analysis')
+rank('Full-genome phylogenetic')
+rank('phylogenetic analysis of full genome')
+rank('Full-genome phylogenetic analysis')
+rank('genome')
+rank('covid')
+rank('PCR')
+rank('pathogens')
+rank('GISAID')
 
 
 # =============================================================================
-# CASE 0: NR: expert looking for info to verify assumption
+# CASE 0: Sustainable risk reduction strategies
 # =============================================================================
-search_Case_0 = search('kinderen diefstal kenmerken OostEuropa') # note hyphen is not included in text
-rank('kinderen diefstal kenmerken OostEuropa')
-
-
-# =============================================================================
-# CASE I: NR: get all information on a certain topic; e.g. prostitution
-# =============================================================================
-search_Case_I = search('prostitutie')
-rank('prostitutie')
-
-
-# =============================================================================
-# CASE II: Student: get all information about victims/ perpetrators
-# =============================================================================
-search_Case_II = search('slachtoffer dader') 
-rank('slachtoffer dader')
-
-
-# =============================================================================
-# CASE III: Media: has NR a point of view taking-in a passport of a delinquent 
-# of sexual violence against children so that he/ she is not able to travel.
-# =============================================================================
-search_Case_III = search('paspoort delinquent sexueel misbruik kinderen')
-rank('paspoort delinquent sexueel misbruik kinderen')
-
-
-# =============================================================================
-# Save datafram to pickle
-# =============================================================================
-df.to_pickle('output/df210619.pkl')
-df_webpages.to_pickle('output/df_webpages210619.pkl')
-
-
-# =============================================================================
-# PART V: Rank and return (machine learning) - not ready yet
-# =============================================================================
-# Create pseudo-truth set using first 5 words 
-# Because I don't have a truth set I will generate a pseudo one by pulling terms from the documents - this is far from perfect
-# as it may not approximate well peoples actual queries but it will serve well to build the ML architecture 
-#df_truth = pd.DataFrame()
-#
-#for doc in plottest:
-#    first_five = doc[0:5]
-#    test_sentence = ' '.join(first_five)
-#    result = search(test_sentence)
-#    df_temp = pd.DataFrame([result])
-#    df_truth= pd.concat([df_truth, df_temp])
-#
-#df_truth['truth'] = range(0,len(plottest))
-#
-## Create another psuedo-truth set using random 3 word sequence from docs
-#df_truth1 = pd.DataFrame()
-#seqlen = 3
-#
-#for doc in plottest:
-#    try:
-#        start = random.randint(0,(len(doc)-seqlen))
-#        random_seq = doc[start:start+seqlen]
-#        test_sentence = ' '.join(random_seq)
-#    except:
-#        test_sentence = doc[0]
-#    result = search(test_sentence)
-#    df_temp = pd.DataFrame([result])
-#    df_truth1= pd.concat([df_truth1, df_temp])
-#
-#df_truth1['truth'] = range(0,len(plottest))
-#
-#
-## Create another psuedo-truth set using different random 4 word sequence from docs
-#df_truth2 = pd.DataFrame()
-#seqlen = 4
-#
-#for doc in plottest:
-#    try:
-#        start = random.randint(0,(len(doc)-seqlen))
-#        random_seq = doc[start:start+seqlen]
-#        test_sentence = ' '.join(random_seq)
-#    except:
-#        test_sentence = doc[0]
-#    result = search(test_sentence)
-#    df_temp = pd.DataFrame([result])
-#    df_truth2= pd.concat([df_truth2, df_temp])
-#
-#df_truth2['truth'] = range(0,len(plottest))
-#
-## Create another psuedo-truth set using different random 2 word sequence from docs
-#df_truth3 = pd.DataFrame()
-#seqlen = 2
-#
-#for doc in plottest:
-#    try:
-#        start = random.randint(0,(len(doc)-seqlen))
-#        random_seq = doc[start:start+seqlen]
-#        test_sentence = ' '.join(random_seq)
-#    except:
-#        test_sentence = doc[0]
-#    result = search(test_sentence)
-#    df_temp = pd.DataFrame([result])
-#    df_truth3= pd.concat([df_truth3, df_temp])
-#
-#df_truth3['truth'] = range(0,len(plottest))
-#
-## Combine the truth sets and save to disk 
-#truth_set = pd.concat([df_truth,df_truth1,df_truth2,df_truth3])
-#truth_set.columns = ['search term', 'actual_words_searched','num_occur','percentage_of_terms','td-idf','word_order','truth']
-#truth_set.to_csv("output/truth_set_final.csv")
-#
-#truth_set[0:10]
-#
-#truth_set
-#test_set = truth_set[0:3]
-#test_set
-#
-#
-## convert to long format for ML 
-## WARNING AGAIN THIS IS A SLOW PROCESS DUE TO RAM ILOC - COULD BE OPTIMISED FOR FASTER PERFORMANCE 
-## BUG When min(maxnum, len(truth_set) <- is a int not a list because of very short variable length)
-#
-## row is row
-## column is variable
-## i is the result 
-#
-#final_set =  pd.DataFrame()
-#test_set = truth_set[1:100]
-#maxnum = 5
-#
-#for row in range(0,len(test_set.index)):
-#    test_set = truth_set[1:100]
-#    for col in range(2,6):
-#        for i in range(0,min(maxnum,len(truth_set.iloc[row][col]))):
-#            x = pd.DataFrame([truth_set.iloc[row][col][i]])
-#            x['truth'] = truth_set.iloc[row]['truth']
-#            x.columns = [(str(truth_set.columns[col]),"index",i),(str(truth_set.columns[col]),"score",i),'truth']
-#            test_set = test_set.merge(x,on='truth')
-#    final_set = pd.concat([final_set,test_set])
-#        
-#final_set.head()
-#Out[29]:
-#
-#final_set.to_csv("ML_set_100.csv")
-#
-#final_set2 = final_set.drop(['actual_words_searched','num_occur','percentage_of_terms','search term','td-idf','word_order'], 1)
-#final_set2.to_csv("ML_set_100_3.csv")
-#final_set2.head()
-#
-#final_set3 = final_set2
-#final_set3[0:10]
-
-
+search_case_7 = search('Sustainable risk reduction strategies') 
+rank('Sustainable risk reduction strategies')
 
