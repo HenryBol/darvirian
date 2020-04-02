@@ -12,6 +12,9 @@
 
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
 
+# TODO
+# Keep numerical values in Sentences
+
 
 # =============================================================================
 # Import the libraries
@@ -37,7 +40,19 @@ from nltk.corpus import stopwords
 ## Read docs from CORD-19
 # import os
 # os.chdir("../Data/CSV")
-df = pd.read_csv('Data/CSV/biorxiv_clean.csv')
+df_biorxiv = pd.read_csv('Data/CSV/biorxiv_clean.csv')
+df_clean_comm_use = pd.read_csv('Data/CSV/clean_comm_use.csv')
+df_clean_noncomm_use = pd.read_csv('Data/CSV/clean_noncomm_use.csv')
+df_clean_pmc = pd.read_csv('Data/CSV/clean_pmc.csv')
+
+# Add all dataframes togethers
+# df = df_biorxiv.append(df_clean_comm_use)
+# df = df.append(df_clean_noncomm_use)
+# df = df.append(df_clean_pmc)
+
+df = df_biorxiv.copy()
+
+# Inspect
 df.info()
 df.columns
 ## Copy for convenience the data to a 'Raw_Text' column
@@ -58,7 +73,7 @@ NaN_list_rows = df.isnull().sum(axis=1).sort_values(ascending = False)
 df = df.replace(np.nan, '', regex=True)
 
 # Clean text (keep '.' for tokenize sentences); check add characters e.g. '-' add or not (also used as hyphen)
-# TODO check adding figures (0-9) which increases the number of unique word significantly (and slow the tdidf process)
+# TODO check adding figures (0-9) which increases the number of unique words significantly (and slow the tdidf process)
 # df.Raw_Text = [re.sub(r'[^a-zA-Z0-9. ]', '', str(x)) for x in df.Raw_Text]
 df.Raw_Text = [re.sub(r'[^a-zA-Z.\- ]', '', str(x)) for x in df.Raw_Text] 
 
@@ -136,6 +151,12 @@ wordsunique = list(wordsunique)
 len(wordsunique)
 
 
+## Dictionary of unique words as values
+idx2word = dict(enumerate(wordsunique))
+# Dictionary with the unique words as keys
+words2idx = {v:k for k,v in idx2word.items()}
+
+
 ## Functions for TD-IDF / BM25
 # TODO check BM25
 import math
@@ -149,7 +170,6 @@ def idf(word, doclist):
 def tfidf(word, doc, doclist):
     return (tf(word, doc) * idf(word, doclist))
 
-
 ## Create dictonary of words
 # THIS ONE-TIME INDEXING IS THE MOST PROCESSOR-INTENSIVE STEP AND WILL TAKE TIME TO RUN (BUT ONLY NEEDS TO BE RUN ONCE)
 # Output: dictionary worddic
@@ -157,43 +177,72 @@ def tfidf(word, doc, doclist):
 # VALUES: list of doc indexes where the word occurs plus per doc: word position(s) and tfidf-score
 
 plottest = plot_data[0:1000]
-# plottest = plot_data
 
-# Create dictionary with a list as values
-from collections import defaultdict
-worddic = defaultdict(list)
-
-# Loop (for reference and to make the comprehension (see below) a bit more understandable)
+# # words2idx on plottest
+# plottest_num = []
 # for doc in plottest:
-#     for word in set(doc): # set provides unique words in doc 
-#         word = str(word)
-#         index = plottest.index(doc)
-#         positions = list(np.where(np.array(plottest[index]) == word)[0])
-#         idfs = tfidf(word,doc,plottest)
-#         worddic[word].append([index,positions,idfs])
+#     doc = [word2idx.get(w) for w in doc]
+#     plottest_num.append(doc)
 
-# Create the dictionary via comprehension to speed up processing
+# # make copies
+# plottest_copy = plottest.copy()
+# plottest = plottest_num.copy()
+
+# # Create dictionary with a list as values
+# from collections import defaultdict
+# worddic = defaultdict(list)
+
+# # Loop (for reference and to make the comprehension (see below) a bit more understandable)
+# # for doc in plottest:
+# #     for word in set(doc): # set provides unique words in doc 
+# #         word = str(word)
+# #         index = plottest.index(doc)
+# #         positions = list(np.where(np.array(plottest[index]) == word)[0])
+# #         idfs = tfidf(word,doc,plottest)
+# #         worddic[word].append([index,positions,idfs])
+
+# # Create the dictionary via comprehension to speed up processing
 # import time
 # start = time.time()
-# # TODO speed up
-# [worddic[word].append([plottest.index(doc), list(np.where(np.array(plottest[plottest.index(doc)]) == word)[0]), tfidf(word,doc,plottest), ]) for doc in plottest for word in set(doc)]
+# # [worddic[word].append([plottest.index(doc), list(np.where(np.array(plottest[plottest.index(doc)]) == word)[0]), tfidf(word,doc,plottest)]) for doc in plottest for word in set(doc)]
+# [worddic[word].append([plottest.index(doc), [index for index, w in enumerate(doc) if w == word], tfidf(word,doc,plottest)]) for doc in plottest for word in set(doc)]
+# # TD-IDF processing direct: no impact
+# # plottest_length = len(plottest)
+# # [worddic[word].append([plottest.index(doc), [index for index, w in enumerate(doc) if w == word], (doc.count(word) / len(doc)) / np.log(plottest_length / sum(1 for doc in plottest if word in doc))]) for doc in plottest for word in set(doc)]
 # end = time.time()
-# print(end - start) # duration 3.36 hours for full biorxiv_clean
+# print(end - start) # duration 2.0 hours for biorxiv
 
+
+# ## Change words to string (instead of numbers)
+# # TODO rewrite to comprehension
+# # idx2words on worddic
+# worddic_num = worddic.copy()
+# word_list = list(worddic.keys())
+# word_keys = [0] * len(worddic)
+# for i in range(len(worddic)):
+#    print(i)
+#    word_keys[i] = idx2word.get(word_list[i])
+# worddic = dict(zip(word_keys, list(worddic.values()))) 
+
+# # check
+# w = 133
+# w = 30877
+# idx2word.get(w)
+
+# plottest = plottest_copy.copy()
 
 ## Save pickle file
-# f = open("Data/output/worddic_biorxiv_clean_200402.pkl","wb")
+# f = open("Data/output/worddic_biorxiv_clean_200402_2.pkl","wb")
 # pickle.dump(worddic,f)
 # f.close()
 
 ## Load pickle file worddic
-pickle_in = open("Data/output/worddic_biorxiv_clean_200402.pkl","rb")
+pickle_in = open("Data/output/worddic_biorxiv_clean_200402_2.pkl","rb")
 worddic = pickle.load(pickle_in) 
 
 # Check
 worddic['covid']
-plottest[882][38]
-len(worddic.keys())
+plottest[884][44]
 
 
 ## Split dictionary into keys and values 
