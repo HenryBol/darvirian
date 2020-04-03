@@ -36,6 +36,8 @@ import numpy as np
 import string
 import re
 import pickle
+import tensorflow as tf
+tf.__version__
 
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
@@ -52,9 +54,9 @@ from nltk.corpus import stopwords
 # import os
 # os.chdir("../Data/CSV")
 df_biorxiv = pd.read_csv('Data/CSV/biorxiv_clean.csv')
-# df_clean_comm_use = pd.read_csv('Data/CSV/clean_comm_use.csv')
-# df_clean_noncomm_use = pd.read_csv('Data/CSV/clean_noncomm_use.csv')
-# df_clean_pmc = pd.read_csv('Data/CSV/clean_pmc.csv')
+df_clean_comm_use = pd.read_csv('Data/CSV/clean_comm_use.csv')
+df_clean_noncomm_use = pd.read_csv('Data/CSV/clean_noncomm_use.csv')
+df_clean_pmc = pd.read_csv('Data/CSV/clean_pmc.csv')
 
 # Add all dataframes togethers
 # df = df_biorxiv.append(df_clean_comm_use)
@@ -150,6 +152,53 @@ plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
 #stemmed_sentence = [porter_stemmer.stem(w) for w in filtered_sentence]
 #stemmed_sentence[0:10]
 
+
+# =============================================================================
+# PART III: VECTORIZE (and trying to find a faster TF-IDF)
+# =============================================================================
+# from tensorflow.keras.preprocessing.text import Tokenizer
+# from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+# # Tokenize
+# # MAX_VOCAB_SIZE = 70000 # 20000
+# # tokenizer = Tokenizer(num_words=MAX_VOCAB_SIZE, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True,
+# #           split=' ', char_level=False, oov_token=None, document_count=0)
+# tokenizer = Tokenizer(filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True,
+#           split=' ', char_level=False, oov_token=None, document_count=0)
+
+# # Remove stopwords
+# stop_words = set(stopwords.words('english'))
+# alldocslist = [[w for w in doc if w not in stop_words] for doc in alldocslist]
+
+# # Fit and transform
+# tokenizer.fit_on_texts(alldocslist)
+# sequences = tokenizer.texts_to_sequences(alldocslist)
+
+# # Dictionary
+# word2idx = tokenizer.word_index
+
+# # Check value of key 'covid'
+# word2idx.get('covid')
+
+# # MAX_SEQUENCE_LENGTH
+# # data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
+# # data = pad_sequences(sequences)
+
+# # Calculate tfidf
+# tft.tfidf(x, vocab_size, smooth=True, name=None)
+
+
+# #https://stackoverflow.com/questions/30013097/how-to-calculate-tf-idf-for-a-list-of-dict
+#     # from sklearn.feature_extraction.text import TfidfVectorizer
+
+#     # tfv = TfidfVectorizer(min_df=3,  max_features=None,
+#     # strip_accents='unicode', analyzer='word',token_pattern=r'\w{1,}',
+#     # ngram_range=(1,2), use_idf=1,smooth_idf=1,sublinear_tf=1,
+#     # stop_words = 'english')
+
+
+# # Vectorize
+    
 
 # =============================================================================
 # PART III: CREATING THE INVERSE-INDEX
@@ -376,7 +425,7 @@ def search(searchsentence):
                             closedic[index] = []
                             closedic[index].append(positions)
 
-            # TODO check fdic order, seems always to be 0
+            # TODO check fdic order, seems often to be 0: firstlist is not defined yet
             x = 0
             fdic = {}
             for index in y:
@@ -401,7 +450,7 @@ def search(searchsentence):
           
         # could make another metric for if they are not next to each other but still close 
         
-        return(searchsentence,words,fullcount_order,combocount_order,fullidf_order,fdic_order)
+        return(searchsentence, words, fullcount_order, combocount_order, fullidf_order, fdic_order)
     
     except:
         return("")
@@ -522,6 +571,8 @@ def rank(term):
             # print('Affiliations', df.affiliations[results])
             print(df.abstract[results]) # Abstract
 
+    # return(final_candidates, results)
+
 # Find sentence of search word(s)
 def search_sentence(doc_number, search_term):
     sentence_index = []
@@ -535,6 +586,7 @@ def search_sentence(doc_number, search_term):
 
 # Check
 search_term = 'Full-genome phylogenetic'
+search_term = 'Sustainable risk reduction strategies'
 results = search(search_term)
 print(results)
 doc_number = 1
@@ -574,5 +626,6 @@ rank('GISAID')
 # CASE 0: Sustainable risk reduction strategies
 # =============================================================================
 search_case_7 = search('Sustainable risk reduction strategies') 
+search('Sustainable risk reduction strategies')
 rank('Sustainable risk reduction strategies')
 
