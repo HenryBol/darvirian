@@ -21,7 +21,7 @@
 # Initialization
 # =============================================================================
 # Train or Inference
-inference = 'on'
+inference = 'on' # 'on' or 'off' 
 
 # Select dataset
 dataset = 'biorxiv' # only choice yet
@@ -122,6 +122,7 @@ alldocslist = ["".join( j for j in i if j not in string.punctuation) for i in al
 ## Tokenize words (and store in plot_data)
 # TODO check plotdata and structure
 plot_data = [[]] * len(alldocslist)
+index = 0
 for doc in alldocslist:
     tokentext = word_tokenize(doc)
     plot_data[index].append(tokentext)
@@ -201,6 +202,10 @@ if inference != 'on':
     plottest_copy = plottest.copy()
     plottest = plottest_num.copy()
     
+    # f = open("Data/output/plottest.pkl","wb")
+    # pickle.dump(plottest_num,f)
+    # f.close()  
+    
     # Create dictionary with a list as values
     from collections import defaultdict
     worddic = defaultdict(list)
@@ -210,7 +215,7 @@ if inference != 'on':
     #     for word in set(doc): # set provides unique words in doc 
     #         word = str(word)
     #         index = plottest.index(doc)
-    #         positions = list(np.where(np.array(plottest[index]) == word)[0])
+    #         positions = [index for index, w in enumerate(doc) if w == word]
     #         idfs = tfidf(word,doc,plottest)
     #         worddic[word].append([index,positions,idfs])
     
