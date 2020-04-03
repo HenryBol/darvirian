@@ -21,7 +21,7 @@
 # Initialization
 # =============================================================================
 # Train or Inference
-inference = 'off' # 'on' or 'off' 
+inference = 'on' # 'on' or 'off' 
 
 # Select dataset
 dataset = 'biorxiv' # only choice yet
