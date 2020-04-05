@@ -12,10 +12,6 @@
 
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
 
-# TODO
-# Keep numerical values in Sentences
-
-
 
 # =============================================================================
 # Initialization
@@ -45,6 +41,8 @@ from nltk.corpus import stopwords
 
 #from nltk.stem.porter import PorterStemmer
 #from nltk.stem import SnowballStemmer
+
+from collections import Counter
 
 
 # =============================================================================
@@ -78,7 +76,7 @@ df['Raw_Text'] = df['text']
 # PART I: PREPROCESSING
 # =============================================================================
 # Keep only 10 docs to speed up processing for development purposes
-# df = df[:10]
+# df = df[:3]
 
 # Check NaNs
 df.isnull().values.any()
@@ -86,7 +84,13 @@ df.isna().any() # Raw_Text
 NaN_list_rows = df.isnull().sum(axis=1).sort_values(ascending = False)
 df = df.replace(np.nan, '', regex=True)
 
-# Clean text (keep '.' for tokenize sentences); check add characters e.g. '-' add or not (also used as hyphen)
+
+## Keep orginal sentences and tokenize (and store in df.Sentences)
+df['Sentences'] = None
+df.Sentences = [sent_tokenize(df.Raw_Text[i]) for i in range(len(df))]
+
+
+## Clean text (keep '.' for tokenize sentences); check add characters e.g. '-' add or not (also used as hyphen)
 # TODO check adding figures (0-9) which increases the number of unique words significantly (and slow the tdidf process)
 # df.Raw_Text = [re.sub(r'[^a-zA-Z0-9. ]', '', str(x)) for x in df.Raw_Text]
 df.Raw_Text = [re.sub(r'[^a-zA-Z.\- ]', '', str(x)) for x in df.Raw_Text] 
@@ -101,11 +105,6 @@ df['Raw_Text'] = [x.replace('\n', '') for x in df['Raw_Text']]
 # Remove punctuation from all DOCs and create alldocslist
 #exclude = set(string.punctuation)
 alldocslist = list(df.Raw_Text)
-
-
-## Tokenize sentences (and store in df.Sentences)
-df['Sentences'] = None
-df.Sentences = [sent_tokenize(alldocslist[i]) for i in range(len(alldocslist))]
 
 
 ## Remove punctuation
@@ -141,6 +140,8 @@ stop_words = set(stopwords.words('english'))
 #stopwords = stopwords.union(set(['een','van'])) # add extra stopwords
 plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
 
+
+## TODO Stemming or lemmatization
 
 ## Stem words EXAMPLE (could try others/lemmers) / these stemmers are not so good; is not used
 #snowball_stemmer = SnowballStemmer("dutch")
@@ -347,15 +348,25 @@ worddic_list = list(worddic.items())
 # =============================================================================
 # PART IV: The Search Engine
 # =============================================================================
-# create word search which takes multiple words and finds documents that contain both along with metrics for ranking:
+# Create word search which takes multiple words (sentence) and finds documents that contain these words along with metrics for ranking:
 
-    ## (1) Number of occurences of search words 
-    ## (2) TD-IDF score for search words 
-    ## (3) Percentage of search terms
-    ## (4) Word ordering score 
-    ## (5) Exact match bonus 
+# Output: searchsentence, words, fullcount_order, combocount_order, fullidf_order, fdic_order    
+# (1) searchsentence: original sentence to be searched
+# (2) words: words of the search sentence that are found in the dictionary (worddic)
+# (3) fullcount_order: number of occurences of search words 
+# (4) combocount_order: percentage of search terms
+# (5) fullidf_order TD-IDF score for search words (in ascending order)
+# (6)) fdic_order: exact match bonus (# ()) Word ordering score )
 
-from collections import Counter
+# >>> example on limited dataset (first three docs of biorxiv))
+# search('Full-genome phylogenetic analysis')
+# (1) ('full-genome phylogenetic analysis',  # searchsentence: original searh sentence
+# (2) ['phylogenetic', 'analysis'], # words: two of the search words are in the dictionary worddic
+# (3) [(1, 7), (0, 1)], # fullcount_order: the search words (as found in dict) occur in total 7 times in doc 1 and 1 time in doc 0
+# (4) [(1, 1.0), (0, 0.5)], # combocount_order: 
+# (5) [(1, 0.0025220519886750533), (0, 0.0005167452472220973)], # fullidf_order: doc 1 has a total (sum) tf-idf of 0.0025220519886750533, doc 0 a total tf-idf of 0.0005167452472220973
+# (6) [(1, 1)]) # fdic_order:  
+# <<<
 
 def search(searchsentence):
     try:
@@ -377,18 +388,26 @@ def search(searchsentence):
         words = realwords
         numwords = len(words)
         
-        # make metric of number of occurences of all words in each doc & largest total IDF 
+        # metric: sum of number of occurences of all words in each doc (fullcount_order) and sum of TF-IDF score (fullidf_order)
         for word in words:
+            # print(word)
             for indpos in worddic[word]:
+                # print(indpos)
                 index = indpos[0]
                 amount = len(indpos[1])
                 idfscore = indpos[2]
-                enddic[index] = amount
-                idfdic[index] = idfscore
-                fullcount_order = sorted(enddic.items(), key=lambda x:x[1], reverse=True)
-                fullidf_order = sorted(idfdic.items(), key=lambda x:x[1], reverse=True)
-               
-        # make metric of what percentage of words appear in each doc
+                # check if the index is already in the dictionary: add values to the keys
+                if index in enddic.keys(): 
+                    enddic[index] += amount
+                    idfdic[index] += idfscore
+                # if not, just make a two new keys and store the values    
+                else:
+                    enddic[index] = amount
+                    idfdic[index] = idfscore
+        fullcount_order = sorted(enddic.items(), key=lambda x:x[1], reverse=True)
+        fullidf_order = sorted(idfdic.items(), key=lambda x:x[1], reverse=True) 
+
+        # metric: percentage of words appear in each doc
         combo = []
         alloptions = {k: worddic.get(k, None) for k in (words)}
         for worddex in list(alloptions.values()):
@@ -401,7 +420,7 @@ def search(searchsentence):
             combocount[key] = combocount[key] / numwords
         combocount_order = sorted(combocount.items(), key=lambda x:x[1], reverse=True)
         
-        # make metric for if words appear in same order as in search
+        # metric: if words appear in same order as in search
         if len(words) > 1:
             x = []
             y = []
@@ -425,7 +444,7 @@ def search(searchsentence):
                             closedic[index] = []
                             closedic[index].append(positions)
 
-            # TODO check fdic order, seems often to be 0: firstlist is not defined yet
+            # TODO metric: fdic order, seems often to be 0: firstlist is not defined yet
             x = 0
             fdic = {}
             for index in y:
@@ -468,6 +487,9 @@ search('covid')
 search('PCR')
 search('pathogens')
 search('GISAID')
+search('evolutionary relationship pathogens')
+search('fatality rate')
+search('Sustainable risk reduction strategies')
 
 # 0 return will give back the search term, the rest will give back metrics (see above)
 # Save metrics to dataframe for use in ranking and machine learning 
@@ -479,6 +501,7 @@ result5 = search('phylogenetic')
 result6 = search('evolutionary relationship')
 result7 = search('pathogens')
 result8 = search('GISAID')
+
 df_search = pd.DataFrame([result1, result2, result3, result4, result5, result6, result7, result8])
 # TODO check column names with respect to output of search function
 df_search.columns = ['search term', 'actual_words_searched','num_occur','percentage_of_terms','td-idf','word_order']
