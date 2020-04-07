@@ -319,6 +319,7 @@ worddic_list = list(worddic.items())
 
 def search(searchsentence):
     # remove try statements and change to if-else for speeding up search process (also in ranking)
+    # make comprehensions of for loops
     try:
         # split sentence into individual words 
         searchsentence = searchsentence.lower()

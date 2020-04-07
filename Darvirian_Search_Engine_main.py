@@ -83,6 +83,8 @@ worddic = pickle.load(pickle_in)
 # (6) [(1, 1)]) # fdic_order:  
 # <<<
 
+searchsentence = 'Full-genome phylogenetic analysis'
+
 def search(searchsentence):
     # remove try statements and change to if-else for speeding up search process (also in ranking)
     try:
@@ -97,11 +99,11 @@ def search(searchsentence):
         closedic = {}
         
         # remove words if not in worddic 
-        realwords = []
-        for word in words:
-            if word in list(worddic.keys()):
-                realwords.append(word)  
-        words = realwords
+        # realwords = []            
+        # for word in words:
+        #     if word in list(worddic.keys()):
+        #         realwords.append(word)  
+        words = [word for word in words if word in worddic.keys()]
         numwords = len(words)
         
         # metrics fullcount_order and fullidf_order: sum of number of occurences of all words in each doc (fullcount_order) and sum of TF-IDF score (fullidf_order)
@@ -138,17 +140,29 @@ def search(searchsentence):
     
         # metric closedic: if words appear in same order as in search
         if len(words) > 1:
-            x = [] # per word: document(s) that a word appeards
-            y = [] # documents with more than one search word
-            for record in [worddic[z] for z in words]:
-                for index in record:
-                      x.append(index[0])
-            for i in x:               
-                if x.count(i) > 1:
-                    y.append(i)
-            y = list(set(y))
+            # x = [] # per word: document(s) in which a word appears
+            # y = [] # documents with more than one search word
+            # for record in [worddic[z] for z in words]:
+            #     for index in record:
+            #           x.append(index[0])
+            # all document(s) in which a search word appears (index[0] gives the document number)
+            x = [index[0] for record in [worddic[z] for z in words] for index in record]
+            # for i in x:               
+            #     if x.count(i) > 1: # count number of times a doc occurs in x
+            #         y.append(i)
+            # y = list(set(y))
+            # all document(s) in which more than one search word appears; keep unique values and sort
+            y = sorted(list(set([i for i in x if x.count(i) > 1])))
 
-            # dictionary of documents and all positions per word (for docs with more than one search word in it)
+# def diff(first, second):
+#     second = set(second)
+#     return [item for item in first if item not in second]
+
+# diff(x,x2)
+# diff(x2,x)
+
+
+            # dictionary of documents and all positions (for docs with more than one search word in it)
             closedic = {}
             for wordbig in [worddic[x] for x in words]:
                 for record in wordbig:
@@ -161,7 +175,32 @@ def search(searchsentence):
                             closedic[index] = []
                             closedic[index].append(positions)
 
-            # metric: fdic order
+# x = [index[0] for record in [worddic[z] for z in words] for index in record]
+
+# closedic2 = {key_2: worddic[key_2] for key_2 in y}
+
+# closedic2 = { your_key: old_dict[your_key] for your_key in your_keys }
+
+# dict(zip(keys, [orig[k] for k in keys]))
+# closedic2 = dict(zip(y, [worddic[k] for k in y]))
+
+# worddic[1][]
+
+# dict(worddic)
+
+# passed = { key:value for key, value in marks.items() if value > 50 }
+# closedic2 = { key:value for key, value in dict(worddic).items() if value in y}
+
+# worddic['covid']
+
+# items = worddic.items()
+# items.keys(0)
+
+# fdic_order[0]
+
+# closedic = {k, func(v) for k, v in worddic.items() if k in y}
+
+            # metric: fdic number of times search words appear in a doc in descending order
             # TODO check
             x = 0
             fdic = {}
@@ -318,6 +357,9 @@ rank('GISAID')
 rank('virus spreading evolving')
 rank('in-house singleplex assay')
 rank('FTDRP multiplex RT-PCR')
+rank('FTDRP multiplex RT-PCR Full-genome phylogenetic analysis')
+rank('farmer')
+rank('nagoya protocol')
 
 
 # =============================================================================
@@ -327,5 +369,9 @@ search_case_7 = search('Sustainable risk reduction strategies')
 search('Sustainable risk reduction strategies')
 rank('Sustainable risk reduction strategies')
 
+# =============================================================================
+# CASE 1: Real-time tracking of whole genomes
+# =============================================================================
+rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
 
 
