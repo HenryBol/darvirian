@@ -5,30 +5,24 @@
 # Contents:
 # PART I: Preprocessing
 # PART II Tokenize in sentences and words
-# PART III: Vectorize and calculate TF-IDF
-# PART IV: Creating the inverse-index: creates 'worddic' (dict with all words: vectorized and in which document(s) it occurs on which position(s) and tfidf)
-# PART V: The Search Engine: function 'search'
-# PART VI: Rank and return (rules based): function 'rank' based on 5 rules and providing summaries
+# PART III: Creating the inverse-index: creates 'worddic' (dict with all words: vectorized and in which document(s) it occurs on which position(s) and tfidf)
+# PART IV: The Search Engine: function 'search'
+# PART V: Rank and return (rules based): function 'rank' based on 5 rules and providing summaries
 # CASE 0: Sustainable risk reduction strategies
 
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
 
-# TODO
-# limit number of words via 
-# max_vocab_size
-# stemming
-# preference: lemmatization
 
+# 200406: CODE CONTAINING NUMERICAL APPORACH FOR GENERATING WORDDIC (INCREASING SPEED)
 
 # =============================================================================
 # Initialization
 # =============================================================================
 # Train or Inference
-inference = 'on' # 'on' or 'off' 
+inference = 'off' # 'on' or 'off' 
 
 # Select dataset
-# dataset = 'biorxiv' 
-dataset = 'all'
+dataset = 'biorxiv' # only choice yet
 
 
 # =============================================================================
@@ -40,6 +34,8 @@ import numpy as np
 import string
 import re
 import pickle
+import tensorflow as tf
+tf.__version__
 
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
@@ -49,7 +45,6 @@ from nltk.corpus import stopwords
 #from nltk.stem import SnowballStemmer
 
 from collections import Counter
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 # =============================================================================
@@ -64,10 +59,9 @@ df_clean_noncomm_use = pd.read_csv('Data/CSV/clean_noncomm_use.csv')
 df_clean_pmc = pd.read_csv('Data/CSV/clean_pmc.csv')
 
 # Add all dataframes togethers
-if dataset == 'all':
-    df = df_biorxiv.append(df_clean_comm_use).reset_index(drop=True)
-    df = df.append(df_clean_noncomm_use).reset_index(drop=True)
-    df = df.append(df_clean_pmc).reset_index(drop=True)
+df = df_biorxiv.append(df_clean_comm_use)
+df = df.append(df_clean_noncomm_use)
+df = df.append(df_clean_pmc)
 
 # Select dataset
 if dataset == 'biorxiv':
@@ -88,33 +82,16 @@ df['Raw_Text'] = df['text']
 
 # Check NaNs
 df.isnull().values.any()
-df.isna().any() # title, authors, afffiliations, avstract
+df.isna().any() # Raw_Text
 NaN_list_rows = df.isnull().sum(axis=1).sort_values(ascending = False)
 df = df.replace(np.nan, '', regex=True)
-
-## Check duplicates
-# TODO
 
 # Remove '\n' 
 df['Raw_Text'] = [x.replace('\n', '') for x in df['Raw_Text']]
 
 ## Keep orginal sentences and tokenize (and store in df.Sentences)
 df['Sentences'] = None
-# TODO fails with full df (all datasets)
-df.Sentences = [sent_tokenize(df.Raw_Text[i]) for i in range(len(df)) if len(df.Raw_Text[i]) != 0]
-df.info()
-
-sentences = df.Sentences 
-
-## Save df.Sentences file
-f = open("Data/output/sentences_200407.pkl","wb")
-pickle.dump(sentences, f)
-f.close()
-
-## Load pickle file sentences
-if inference == 'on':
-    pickle_in = open("Data/output/sentences_200407.pkl","rb")
-    sentences = pickle.load(pickle_in) 
+df.Sentences = [sent_tokenize(df.Raw_Text[i]) for i in range(len(df))]
 
 
 ## Clean text (keep '.' for tokenize sentences); check add characters e.g. '-' add or not (also used as hyphen)
@@ -123,7 +100,6 @@ if inference == 'on':
 df.Raw_Text = [re.sub(r'[^a-zA-Z.\- ]', '', str(x)) for x in df.Raw_Text] 
 # TODO check Replace'-' by space ' '
 # df.Raw_Text = [re.sub(r'[-]', ' ', str(x)) for x in df.Raw_Text] 
-
 
 # =============================================================================
 # PART II: TOKENIZE IN SENTENCES AND WORDS
@@ -147,6 +123,7 @@ alldocslist = ["".join( j for j in i if j not in string.punctuation) for i in al
 
 
 ## Tokenize words (and store in plot_data)
+# TODO check plotdata and structure
 plot_data = [[]] * len(alldocslist)
 index = 0
 for doc in alldocslist:
@@ -169,61 +146,194 @@ plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
 ## TODO Stemming or lemmatization
 
 ## Stem words EXAMPLE (could try others/lemmers) / these stemmers are not so good; is not used
-#snowball_stemmer = SnowballStemmer("english")
+#snowball_stemmer = SnowballStemmer("dutch")
 #stemmed_sentence = [snowball_stemmer.stem(w) for w in filtered_sentence]
 #stemmed_sentence[0:10]
 #
 #porter_stemmer = PorterStemmer()
-#snowball_stemmer = SnowballStemmer("english")
+#snowball_stemmer = SnowballStemmer("dutch")
 #stemmed_sentence = [porter_stemmer.stem(w) for w in filtered_sentence]
 #stemmed_sentence[0:10]
 
 
-## Save plot_data file
-f = open("Data/output/plot_data_200407.pkl","wb")
-pickle.dump(plot_data,f)
-f.close()
-
-## Load pickle file plot_data
-if inference == 'on':
-    pickle_in = open("Data/output/plot_data_200407.pkl","rb")
-    plot_data = pickle.load(pickle_in) 
-
-
 # =============================================================================
-# PART III: VECTORIZE (and calculate TF-IDF)
-# ============================================================================
-texts_flattened = [" ".join(x) for x in plot_data]
+# PART III: VECTORIZE (and trying to find a faster TF-IDF)
+# =============================================================================
+# from tensorflow.keras.preprocessing.text import Tokenizer
+# from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+
+# # Check NaNs
+# df.isnull().values.any()
+# df.isna().any() # Raw_Text
+# NaN_list_rows = df.isnull().sum(axis=1).sort_values(ascending = False)
+# df = df.replace(np.nan, '', regex=True)
+
+# # Create alldocslist
+# alldocslist = list(df.Raw_Text)
+# plot_data = [[]] * len(alldocslist)
+# index = 0
+# for doc in alldocslist:
+#     tokentext = word_tokenize(doc)
+#     plot_data[index].append(tokentext)
+#     index +=1
+# # keep only the first one (all others are the same)
+# plot_data = plot_data[0]
+
+# # Tokenize
+# # MAX_VOCAB_SIZE = 70000 # 20000
+# # tokenizer = Tokenizer(num_words=MAX_VOCAB_SIZE, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True,
+# #           split=' ', char_level=False, oov_token=None, document_count=0)
+# tokenizer = Tokenizer(filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True,
+#           split=' ', char_level=False, oov_token=None, document_count=0)
+
+
+# # Remove stopwords
+# stop_words = set(stopwords.words('english'))
+# plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
+
+# plot_data[0]
+# np.size(plot_data)
+
+# # Fit and transform
+# tokenizer.fit_on_texts(plot_data)
+# sequences = tokenizer.texts_to_sequences(plot_data)
+
+# # Dictionary
+# word2idx = tokenizer.word_index
+
+# # Check value of key 'covid'
+# word2idx.get('covid')
+
+
+# # MAX_SEQUENCE_LENGTH
+# # data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
+# # data = pad_sequences(sequences)
+
+# # Calculate tfidf TF
+# def tokenizer(text):
+#     words = word_tokenize(text)
+#     return words
+# max_features = 80000
+# tfidf = TfidfVectorizer(tokenizer=tokenizer, stop_words='english', max_features=max_features)
+# sparse_tfidf_texts = tfidf.fit_transform(texts)
+
+
+# Calculate tifdf sklearn
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+## DIT WERKT
+# Define tokenizer
+# texts = df['Raw_Text'].copy()
+
 # vectorizer = TfidfVectorizer(lowercase=True, analyzer='word', stop_words='english')
+# vectors = vectorizer.fit_transform(texts_flattened)
+# feature_names = vectorizer.get_feature_names()
+# dense = vectors.todense()
+# denselist = dense.tolist()
+# df_tfidf = pd.DataFrame(denselist, columns=feature_names)
+
+
+## DIT WERKT OOK (eerst plottest berekenen)
+texts_flattened = [" ".join(x) for x in plottest]
+# vectorizer = TfidfVectorizer(lowercase=True, analyzer='word', stop_words='english')
+# vectorizer = TfidfVectorizer(lowercase=False, analyzer='word', stop_words=None)
 # Include with token_pattern also single characters  
-vectorizer = TfidfVectorizer(lowercase=False, stop_words=None, token_pattern = r"(?u)\b\w+\b")
+vectorizer = TfidfVectorizer(lowercase=False, stop_words=None, token_pattern = r"(?u)\b\w+\b") # !TODO 67966 versus 67984 words in worddic
 vectors = vectorizer.fit_transform(texts_flattened)
 feature_names = vectorizer.get_feature_names()
 dense = vectors.todense()
-# This takes quite a while; so do not convert to a dataframe but keep using the array
-# denselist = dense.tolist() 
+denselist = dense.tolist()
+df_tfidf = pd.DataFrame(denselist, columns=feature_names)
+
+df_columns = list(df_tfidf.columns)
+df_columns - feature_names
+
+def diff(first, second):
+    # second = set(second)
+    return [item for item in first if item not in second]
+
+diff_words = diff(wordsunique, feature_names)
+['u',
+ 'p',
+ 'h',
+ 'e',
+ 'q',
+ 'v',
+ 'z',
+ 'c',
+ 'l',
+ 'x',
+ 'g',
+ 'j',
+ 'f',
+ 'r',
+ 'b',
+ 'w',
+ 'k',
+ 'n']
+diff_words = diff(feature_names, wordsunique)
+
+## Remove punctuation
+# texts = ["".join( j for j in i if j not in string.punctuation) for i in texts]
+
+# texts2 = [[]] * len(texts)
+# index = 0
+# for doc in texts:
+#     tokentext = word_tokenize(doc)
+#     texts2[index].append(tokentext)
+#     index +=1
+# # keep only the first one (all others are the same)
+# texts = texts2[0]
+
+# #exclude = set(string.punctuation)
+# ##alldocslist = []
+# #i = 0
+# #for i in range(len(df)):
+# #    text = df.Raw_Text[i]
+# #    text = ''.join(ch for ch in text if ch not in exclude)
+# #    alldocslist.append(text)
+# #print(alldocslist[1])
+
+
+# ## Lower case words for all docs (is also done in TfidfVectorizer())
+# texts = [[w.lower() for w in line] for line in texts]
+
+# # Remove stop words from all docs 
+# # stop_words = set(stopwords.words('dutch'))
+# stop_words = set(stopwords.words('english'))
+# #stopwords = stopwords.union(set(['een','van'])) # add extra stopwords
+# texts = [[w for w in line if w not in stop_words] for line in texts]
+
+# # # Flatten texts
+# texts_flattened = [" ".join(x) for x in texts]
+
+
+
+
+# texts = df['Raw_Text'].copy()
+# vectorizer = TfidfVectorizer(lowercase=True, analyzer='word', stop_words='english')
+# vectors = vectorizer.fit_transform(texts)
+# feature_names = vectorizer.get_feature_names()
+# dense = vectors.todense()
+# denselist = dense.tolist()
 # df_tfidf = pd.DataFrame(denselist, columns=feature_names)
-df_tfidf = pd.DataFrame(dense, columns=feature_names)
-
-# Get word -> integer mapping
-word2idx = tokenizer.word_index
-V = len(word2idx)
-print('Found %s unique tokens.' % V)
 
 
-## Save pickle file
-f = open("Data/output/df_tfidf_200407.pkl","wb")
-pickle.dump(df_tfidf,f)
-f.close()
+# #https://stackoverflow.com/questions/30013097/how-to-calculate-tf-idf-for-a-list-of-dict
+#     # from sklearn.feature_extraction.text import TfidfVectorizer
 
-## Load pickle file df_dfidf
-if inference == 'on':
-    pickle_in = open("Data/output/df_tfidf_200407.pkl","rb")
-    df_tfidf = pickle.load(pickle_in) 
+#     # tfv = TfidfVectorizer(min_df=3,  max_features=None,
+#     # strip_accents='unicode', analyzer='word',token_pattern=r'\w{1,}',
+#     # ngram_range=(1,2), use_idf=1,smooth_idf=1,sublinear_tf=1,
+#     # stop_words = 'english')
 
+
+# # Vectorize
+    
 
 # =============================================================================
-# PART IV: CREATING THE INVERSE-INDEX
+# PART III: CREATING THE INVERSE-INDEX
 # =============================================================================
 # Create inverse index which gives document number for each document and where word appears
 
@@ -235,30 +345,59 @@ len(wordsunique)
 
 
 ## Dictionary of unique words as values
-# idx2word = dict(enumerate(wordsunique))
-# # Dictionary with the unique words as keys
-# word2idx = {v:k for k,v in idx2word.items()}
+idx2word = dict(enumerate(wordsunique))
+# Dictionary with the unique words as keys
+word2idx = {v:k for k,v in idx2word.items()}
 
+
+## Functions for TD-IDF / BM25
+# TODO check BM25
+import math
+#from textblob import TextBlob as tb
+def tf(word, doc):
+    return doc.count(word) / len(doc)
+def n_containing(word, doclist):
+    return sum(1 for doc in doclist if word in doc)
+def idf(word, doclist):
+    return math.log(len(doclist) / (0.01 + n_containing(word, doclist)))
+def tfidf(word, doc, doclist):
+    return (tf(word, doc) * idf(word, doclist))
 
 ## Create dictonary of words
+# THIS ONE-TIME INDEXING IS THE MOST PROCESSOR-INTENSIVE STEP AND WILL TAKE TIME TO RUN (BUT ONLY NEEDS TO BE RUN ONCE)
 # Output: dictionary worddic
 # KEY: word 
 # VALUES: list of doc indexes where the word occurs plus per doc: word position(s) and tfidf-score
 
+plottest = plot_data.copy()
+
 # Train TF-IDF if inference is off (no on)
 if inference != 'on': 
+    # words2idx on plottest
+    # plottest_num = []
+    # for doc in plottest:
+    #     doc = [word2idx.get(w) for w in doc]
+    #     plottest_num.append(doc)
+    
+    # make copies
+    # plottest_copy = plottest.copy()
+    # plottest = plottest_num.copy()
+    
+    # f = open("Data/output/plottest.pkl","wb")
+    # pickle.dump(plottest_num,f)
+    # f.close()  
     
     # Create dictionary with a list as values
     from collections import defaultdict
     worddic = defaultdict(list)
     
     # Loop (for reference and to make the comprehension (see below) a bit more understandable)
-    # for i,doc in enumerate(plot_data):
-    #     for doc in plot_data:
+    # for i,doc in enumerate(plottest):
+    #     for doc in plottest:
     #         for word in set(doc): # set provides unique words in doc 
     #             print(word)
     #             # word = str(word)
-    #             index = plot_data.index(doc)
+    #             index = plottest.index(doc)
     #             positions = [index for index, w in enumerate(doc) if w == word]
     #             idfs = df_tfidf.loc[i, word]
     #             worddic[word].append([index,positions,idfs])
@@ -266,20 +405,51 @@ if inference != 'on':
     # Create the dictionary via comprehension to speed up processing
     import time
     start = time.time()
-    [worddic[word].append([plot_data.index(doc), [index for index, w in enumerate(doc) if w == word], df_tfidf.loc[i, word]]) for i,doc in enumerate(plot_data) for word in set(doc)]
-    # [worddic[word].append([plot_data.index(doc), [index for index, w in enumerate(doc) if w == word], dense[i, feature_names.index(word)]]) for i,doc in enumerate(plot_data) for word in set(doc)]
+    # [worddic[word].append([plottest.index(doc), list(np.where(np.array(plottest[plottest.index(doc)]) == word)[0]), tfidf(word,doc,plottest)]) for doc in plottest for word in set(doc)]
+    [worddic[word].append([plottest.index(doc), [index for index, w in enumerate(doc) if w == word], df_tfidf.loc[i, word]]) for i,doc in enumerate(plottest) for word in set(doc)]
+    # [worddic[word].append([plottest.index(doc), [index for index, w in enumerate(doc) if w == word], tfidf(word,doc,plottest)]) for doc in plottest for word in set(doc)]
+ 
+    # TD-IDF processing direct: no impact
+    # plottest_length = len(plottest)
+    # [worddic[word].append([plottest.index(doc), [index for index, w in enumerate(doc) if w == word], (doc.count(word) / len(doc)) / np.log(plottest_length / sum(1 for doc in plottest if word in doc))]) for doc in plottest for word in set(doc)]
     end = time.time()
-    print(end - start) # duration 76 sec for biorxiv; duration 11314 sec (3.142 hours) for all datasets
+    print(end - start) # duration 2.0 hours for biorxiv
     
+    
+    ## Change words to string (instead of numbers)
+    # TODO rewrite to comprehension
+    # idx2words on worddic
+    # worddic_num = worddic.copy()
+    # word_list = list(worddic.keys())
+    # word_keys = [0] * len(worddic)
+    # for i in range(len(worddic)):
+    #     print(i)
+    #     word_keys[i] = idx2word.get(word_list[i])
+    # worddic = dict(zip(word_keys, list(worddic.values()))) 
+    
+    # check
+    # w = 133
+    # w = 30877
+    # idx2word.get(w)
+
+    # Use plottest withs words in strings instead of numbers 
+    # plottest = plottest_copy.copy()
+
+
     ## Save pickle file
-    f = open("Data/output/worddic_all_200407.pkl","wb")
-    pickle.dump(worddic,f)
-    f.close()
+    # f = open("Data/output/worddic_biorxiv_comm_200403.pkl","wb")
+    # pickle.dump(worddic,f)
+    # f.close()
+
 
 ## Load pickle file worddic
 if inference == 'on':
-    pickle_in = open("Data/output/worddic_all_200407.pkl","rb")
+    pickle_in = open("Data/output/worddic_biorxiv_clean_200402_2.pkl","rb")
     worddic = pickle.load(pickle_in) 
+
+# Check
+# worddic['covid']
+# plottest[884][44]
 
 
 ## Split dictionary into keys and values 
@@ -288,9 +458,30 @@ values = worddic.values()
 items = worddic.items()
 worddic_list = list(worddic.items())
 
+# printing keys and values seperately 
+# print("keys : ", str(keys)) 
+# print("values : ", str(values)) 
+
+# check first and last keys
+# worddic_list[0]
+# worddic_list[-1]
+
+# Check alternative for creating worddic
+# https://stackoverflow.com/questions/17366788/python-split-list-based-on-first-character-of-word
+#def splitLst(x):
+#    dictionary = dict()
+#    for word in x: 
+#       f = word[0]
+#       if f in dictionary.keys():
+#            dictionary[f].append(word)
+#       else:
+#            dictionary[f] = [word]
+#    return dictionary
+# e.g. splitLst(['About', 'Absolutely', 'After', 'Aint', 'Alabama', 'AlabamaBill', 'All', 'Also', 'Amos', 'And', 'Anyhow', 'Are', 'As', 'At', 'Aunt', 'Aw', 'Bedlam', 'Behind', 'Besides', 'Biblical', 'Bill', 'Billgone'])
+
 
 # =============================================================================
-# PART V: The Search Engine
+# PART IV: The Search Engine
 # =============================================================================
 # Create word search which takes multiple words (sentence) and finds documents that contain these words along with metrics for ranking:
 
@@ -313,12 +504,12 @@ worddic_list = list(worddic.items())
 # <<<
 
 
-# searchsentence = 'Full-genome phylogenetic analysis'
-# searchsentence = 'phylogenetic analysis of full genome'
-# # TODO check sum of TD-IDF negative?  (2, -2.16230675287497e-06)],
+searchsentence = 'Full-genome phylogenetic analysis'
+searchsentence = 'phylogenetic analysis of full genome'
+# TODO check sum of TD-IDF negative?  (2, -2.16230675287497e-06)],
+
 
 def search(searchsentence):
-    # remove try statements and change to if-else for speeding up search process (also in ranking)
     try:
         # split sentence into individual words 
         searchsentence = searchsentence.lower()
@@ -425,11 +616,57 @@ def search(searchsentence):
     except:
         return("")
 
+ 
+## Search examples
+search('Full-genome phylogenetic analysis')[1]
+search('phylogenetic analysis of full genome')[1]
+search('Full-genome phylogenetic analysis')
+search('genome')
+search('Full-genome')
+search('Fullgenome')
+search('covid')
+search('PCR')
+search('pathogens')
+search('GISAID')
+search('evolutionary relationship pathogens')
+search('fatality rate')
+search('Sustainable risk reduction strategies')
+
+# 0 return will give back the search term, the rest will give back metrics (see above)
+# Save metrics to dataframe for use in ranking and machine learning 
+result1 = search('Full-genome phylogenetic analysis')
+result2 = search('phylogenetic analysis of full genome')
+result3 = search('Virus genome analysis')
+result4 = search('genome')
+result5 = search('phylogenetic')
+result6 = search('evolutionary relationship')
+result7 = search('pathogens')
+result8 = search('GISAID')
+
+df_search = pd.DataFrame([result1, result2, result3, result4, result5, result6, result7, result8])
+# TODO check column names with respect to output of search function
+df_search.columns = ['search term', 'actual_words_searched','num_occur','percentage_of_terms','td-idf','word_order']
+df_search
+
+df_search.to_excel("Data/output/search_results.xlsx")
+
+# Look to see if the top documents seem to make sense
+alldocslist[1]
+
+## Double check: search in original df
+df[df['Raw_Text'].str.contains('genome')] 
+df[df['Raw_Text'].str.contains('phylogenetic')] 
+df[df['Raw_Text'].str.contains('Covid')]  # only 9 papers
+
 
 # =============================================================================
-# PART VI: Rank and return (rule based)
+# PART V: Rank and return (rule based)
 # =============================================================================
-# Create a simple rule based rank and return function
+# Create a simple (non-machine learning) rank and return function
+
+term = 'Full-genome phylogenetic analysis'
+search_term = term
+
 
 def rank(term):
     results = search(term)
@@ -493,18 +730,18 @@ def rank(term):
     print('\nFound search words:', results[1])
     print('Ranked papers (document numbers):', final_candidates)
     
+
     # print max top 5 results: sentences with search words, paper iD (and documet number), authors and abstract
     for index, results in enumerate(final_candidates):
         if index < 5:
 
             print('\n\nRESULT {}:'. format(index + 1), df.title[results])
-            print('\nPaper ID:', df.paper_id[results], '(Document no: {})'. format(results))
-            print('\nAuthors:', df.authors[results])
-            print('\n')
-            print(df.abstract[results])
             search_results = search_sentence(results, term)
-            print('Sentences:\n')
-            print(search_results)
+            print('\nSentences:', search_results)
+            print('\nPaper ID:', df.paper_id[results], '(Document no: {})'. format(results))
+            print('\nAuthors:', df.authors[results], '\n')
+            # print('Affiliations', df.affiliations[results])
+            print(df.abstract[results])
 
     # return(final_candidates, results)
 
@@ -512,29 +749,38 @@ def rank(term):
 def search_sentence(doc_number, search_term):
     sentence_index = []
     search_list = search_term.split()
-    # for sentence in df.Sentences[doc_number]:
-    for sentence in sentences[doc_number]:
+    for sentence in df.Sentences[doc_number]:
         for search_word in search_list:
             if search_word.lower() in sentence.lower():
                 sentence_index.append(sentence) # df.Sentences[doc_number].index(sentence)
     return sentence_index
 
 
+# Check
+search_term = 'Full-genome phylogenetic'
+search_term = 'Sustainable risk reduction strategies'
+results = search(search_term)
+print(results)
+doc_number = 1
+search_sentence(doc_number, search_term)
+
+search_term = 'genome'
+# search_term = 'Full-genome'
+results = search(search_term)
+print(results)
+doc_number = 1
+search_sentence(doc_number, search_term)
+
+
 ## Examples
 # Search return(searchsentence,words,fullcount_order,combocount_order,fullidf_order,fdic_order)
-search('Full-genome phylogenetic analysis')[1]
-search('phylogenetic analysis of full genome')[1]
 search('Full-genome phylogenetic analysis')
+search('Full-genome phylogenetic')
 search('genome')
-search('Full-genome')
-search('Fullgenome')
 search('covid')
 search('PCR')
 search('pathogens')
 search('GISAID')
-search('evolutionary relationship pathogens')
-search('fatality rate')
-search('Sustainable risk reduction strategies')
 
 # Rank
 rank('Full-genome phylogenetic analysis')
@@ -547,9 +793,6 @@ rank('covid')
 rank('PCR')
 rank('pathogens')
 rank('GISAID')
-rank('virus spreading evolving')
-rank('in-house singleplex assay')
-rank('FTDRP multiplex RT-PCR')
 
 
 # =============================================================================
