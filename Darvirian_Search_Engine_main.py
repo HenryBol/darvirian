@@ -125,14 +125,19 @@ def search(searchsentence):
         fullcount_order = sorted(enddic.items(), key=lambda x:x[1], reverse=True)
         fullidf_order = sorted(idfdic.items(), key=lambda x:x[1], reverse=True) 
 
+ # #1049
+ # comboindex[1049]
+ # comboindex.index(1049)
+ 
         # metric combocount_order: percentage of search words (as in dict) that appear in each doc
+        # TODO check when combocountorder > 1 (and is it a reason to give these docs more relevance)
         combo = []
         alloptions = {k: worddic.get(k, None) for k in (words)}
         for worddex in list(alloptions.values()):
             for indexpos in worddex:
                 for indexz in indexpos:
                     combo.append(indexz)
-        comboindex = combo[::3]
+        comboindex = combo[::3] # slice with stepsize 3 (which gives all indices)
         combocount = Counter(comboindex)
         for key in combocount:
             combocount[key] = combocount[key] / numwords
@@ -236,11 +241,19 @@ def search(searchsentence):
 # =============================================================================
 # Create a simple rule based rank and return function
 
+
+term = 'Full-genome phylogenetic analysis'
+
+term = 'Sustainable risk reduction strategies'
+
+df_test = df.text[14738]
+df.columms
+
 def rank(term):
     results = search(term)
     # get metrics 
-    num_score = results[2] # number of search words (as in dict) in each doc (in ascending order)
-    per_score = results[3] # percentage of search words (as in dict) in each doc (in ascending order; range [1,0)
+    num_score = results[2] # number of search words (as in dict) in each doc (in descending order)
+    per_score = results[3] # percentage of search words (as in dict) in each doc (in descending order)
     tfscore = results[4] # sum of tfidf of search words in each doc (in ascending order)
     order_score = results[5] # fidc order
     
@@ -259,13 +272,18 @@ def rank(term):
 
         for match_candidates in per_score:
             # if all words are in a document: add to second_candidates
-            if match_candidates[1] == 1: 
+            # TODO check why per_score sometimes > 1
+            if match_candidates[1] >= 1: 
                 second_candidates.append(match_candidates[0])
             # if all words are in a document and this doc is also in first candidates: add to final_candidates
-            if match_candidates[1] == 1 and match_candidates[0] in first_candidates:
-                final_candidates.append(match_candidates[0])
+            # if match_candidates[1] >= 1 and (match_candidates[0] in first_candidates):
+            #     final_candidates.append(match_candidates[0])
+        # change the above routine to get high value order_scores that are also in per_score 
+        for match_candidates in first_candidates:
+            if match_candidates in second_candidates:
+                final_candidates.append(match_candidates)
 
-    # rule2: add max 4 other worda with order_score greater than 1 (if not yet in final_candiates)
+    # rule2: add max 4 other words with order_score greater than 1 (if not yet in final_candiates)
         t3_order = first_candidates[0:3]
         for each in t3_order:
             if each not in final_candidates:
@@ -298,32 +316,27 @@ def rank(term):
     print('\nFound search words:', results[1])
     print('Ranked papers (document numbers):', final_candidates)
     
-    # print max top 5 results: sentences with search words, paper iD (and documet number), authors and abstract
+    # top results: sentences with search words, paper ID (and documet number), authors and abstract    
+    df_results = pd.DataFrame(columns = ['Title', 'Paper_id', 'Document_no', 'Authors', 'Abstract', 'Sentences'])
     for index, results in enumerate(final_candidates):
         if index < 5:
 
+            df_results.loc[index, 'Title'] = df.title[results]
             print('\n\nRESULT {}:'. format(index + 1), df.title[results])
+            df_results.loc[index, 'Paper_id'] = df.paper_id[results]
+            df_results.loc[index, 'Document_no'] = results
             print('\nPaper ID:', df.paper_id[results], '(Document no: {})'. format(results))
+            df_results.loc[index, 'Authors'] = df.authors[results]
             print('\nAuthors:', df.authors[results])
             print('\n')
+            df_results.loc[index, 'Abstract'] = df.abstract[results]
             print(df.abstract[results])
             search_results = search_sentence(results, term)
+            df_results.loc[index, 'Sentences'] = search_results
             print('Sentences:\n')
             print(search_results)
 
-    # return(final_candidates, results)
-
-# Find sentence of search word(s)ß
-def search_sentence(doc_number, search_term):
-    sentence_index = []
-    search_list = search_term.split()
-    # for sentence in df.Sentences[doc_number]:
-    for sentence in sentences[doc_number]:
-        for search_word in search_list:
-            if search_word.lower() in sentence.lower():
-                sentence_index.append(sentence) # df.Sentences[doc_number].index(sentence)
-    return sentence_index
-
+    return final_candidates, df_results
 
 # =============================================================================
 # PART IV: xamples
@@ -343,7 +356,7 @@ search('evolutionary relationship pathogens')
 search('fatality rate')
 search('Sustainable risk reduction strategies')
 
-# Rank
+# Rank (disable return)
 rank('Full-genome phylogenetic analysis')
 rank('Full-genome phylogenetic')
 rank('genome phylogenetic')
@@ -369,9 +382,17 @@ search_case_7 = search('Sustainable risk reduction strategies')
 search('Sustainable risk reduction strategies')
 rank('Sustainable risk reduction strategies')
 
+final_candidates, rank_result = rank('Sustainable risk reduction strategies')
+rank_result.to_csv('Data/output/rank_result_0200407.csv')
+
 # =============================================================================
 # CASE 1: Real-time tracking of whole genomes
 # =============================================================================
 rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
 
+final_candidates, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
 
+rank_result.to_csv('Data/output/rank_result_0200407.csv')
+
+final_candidates, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
+rank_result.to_csv('Data/output/rank_result_0200407-2.csv')
