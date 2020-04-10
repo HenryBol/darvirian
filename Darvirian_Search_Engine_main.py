@@ -205,7 +205,11 @@ def rank(term):
     
     # single term searched (as in dict): return the following 5 scores
     if num_search_words == 1:
-        final_candidates = [num_score[0][0], num_score[1][0], num_score[2][0], per_score[0][0], tfscore[0][0]]
+        num_score_list = [l[0] for l in num_score] # document numbers
+        num_score_list = num_score_list[:3] # take max 3 documents from num_score  
+        num_score_list.append(per_score[0][0]) # add the best percentage score
+        num_score_list.append(tfscore[0][0]) # add the best tf score
+        final_candidates = list(set(num_score_list)) # remove duplicate document numbers
     
  
     # more than one search word (and found in dictionary)
