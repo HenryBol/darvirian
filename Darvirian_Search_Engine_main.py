@@ -227,8 +227,8 @@ def rank(term):
     
         for match_candidates in per_score:
             # if all words are in a document: add to second_candidates
-            # TODO check why per_score sometimes > 1
-            if match_candidates[1] = 1: 
+            # TODO check why per_score sometimes > 1 (change to >=1 ?)
+            if match_candidates[1] == 1: 
                 second_candidates.append(match_candidates[0])
         # get high value order_scores that are also in per_score 
         for match_candidates in first_candidates:
