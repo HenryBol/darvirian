@@ -14,7 +14,7 @@
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
 
 # TODO
-# limit number of words via 
+# limit number of words via
 # max_vocab_size
 # stemming
 # preference: lemmatization
@@ -24,10 +24,10 @@
 # Initialization
 # =============================================================================
 # Train or Inference
-inference = 'on' # 'on' or 'off' 
+inference = 'on' # 'on' or 'off'
 
 # Select dataset
-# dataset = 'biorxiv' 
+# dataset = 'biorxiv'
 dataset = 'all'
 
 
@@ -35,11 +35,11 @@ dataset = 'all'
 # Import the libraries
 # =============================================================================
 ## Importing the libraries
-import pandas as pd
-import numpy as np 
-import string
 import re
 import pickle
+import pandas as pd
+import numpy as np
+import string
 
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
@@ -48,7 +48,6 @@ from nltk.corpus import stopwords
 #from nltk.stem.porter import PorterStemmer
 #from nltk.stem import SnowballStemmer
 
-from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
@@ -73,10 +72,8 @@ if dataset == 'all':
 if dataset == 'biorxiv':
     df = df_biorxiv.copy()
 
-# Inspect
-df.info()
-df.columns
-## Copy for convenience the data to a 'Raw_Text' column
+
+## Copy for convenience the text data to a 'Raw_Text' column
 df['Raw_Text'] = df['text']
 
 # Create Documentnumber to PaperID table
@@ -93,20 +90,20 @@ df['Raw_Text'] = df['text']
 # Check NaNs
 df.isnull().values.any()
 df.isna().any() # title, authors, afffiliations, avstract
-NaN_list_rows = df.isnull().sum(axis=1).sort_values(ascending = False)
+NaN_list_rows = df.isnull().sum(axis=1).sort_values(ascending=False)
 df = df.replace(np.nan, '', regex=True)
 
 ## Check duplicates
 duplicate_papers = df[df.paper_id.duplicated()] # None
- 
-# Replace '\n' by ' ' 
+
+# Replace '\n' by ' '
 df['Raw_Text'] = [x.replace('\n', ' ') for x in df['Raw_Text']]
 
 ## Keep orginal sentences and tokenize (and store in df.Sentences)
 df['Sentences'] = None
 df.Sentences = [sent_tokenize(df.Raw_Text[i]) for i in range(len(df)) if len(df.Raw_Text[i]) != 0]
 
-sentences = df.Sentences 
+sentences = df.Sentences
 
 ## Save df.Sentences file
 # f = open("Data/output/sentences_200410.pkl","wb")
@@ -115,17 +112,17 @@ sentences = df.Sentences
 
 ## Load pickle file sentences
 if inference == 'on':
-    pickle_in = open("Data/output/sentences_200410.pkl","rb")
-    sentences = pickle.load(pickle_in) 
+    pickle_in = open("Data/output/sentences_200410.pkl", "rb")
+    sentences = pickle.load(pickle_in)
 
 
 ## Clean text (keep '.' for tokenize sentences); check add characters e.g. '-' add or not (also used as hyphen)
 # df.Raw_Text = [re.sub(r'[^a-zA-Z0-9. ]', '', str(x)) for x in df.Raw_Text]
-# df.Raw_Text = [re.sub(r'[^a-zA-Z.\- ]', '', str(x)) for x in df.Raw_Text] 
+# df.Raw_Text = [re.sub(r'[^a-zA-Z.\- ]', '', str(x)) for x in df.Raw_Text]
 # take also '-' out
-df.Raw_Text = [re.sub(r'[^a-zA-Z. ]', '', str(x)) for x in df.Raw_Text] 
+df.Raw_Text = [re.sub(r'[^a-zA-Z. ]', '', str(x)) for x in df.Raw_Text]
 # TODO check Replace'-' by space ' '
-# df.Raw_Text = [re.sub(r'[-]', ' ', str(x)) for x in df.Raw_Text] 
+# df.Raw_Text = [re.sub(r'[-]', ' ', str(x)) for x in df.Raw_Text]
 
 
 # =============================================================================
@@ -142,12 +139,12 @@ alldocslist = ["".join(j for j in i if j not in string.punctuation) for i in all
 ## Tokenize words (and store in plot_data)
 plot_data = [word_tokenize(doc) for doc in alldocslist]
 
-    
-## Lower case words for all docs 
+
+## Lower case words for all docs
 plot_data = [[w.lower() for w in line] for line in plot_data]
 
 
-## Remove stop words from all docs 
+## Remove stop words from all docs
 stop_words = set(stopwords.words('english'))
 plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
 
@@ -165,14 +162,14 @@ plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
 
 
 ## Save plot_data file
-f = open("Data/output/plot_data_200410.pkl","wb")
-pickle.dump(plot_data,f)
+f = open("Data/output/plot_data_200410.pkl", "wb")
+pickle.dump(plot_data, f)
 f.close()
 
 ## Load pickle file plot_data
 if inference == 'on':
-    pickle_in = open("Data/output/plot_data_200410.pkl","rb")
-    plot_data = pickle.load(pickle_in) 
+    pickle_in = open("Data/output/plot_data_200410.pkl", "rb")
+    plot_data = pickle.load(pickle_in)
 
 
 # =============================================================================
@@ -181,8 +178,8 @@ if inference == 'on':
 texts_flattened = [" ".join(x) for x in plot_data]
 # vectorizer = TfidfVectorizer(lowercase=True, analyzer='word', stop_words='english')
 
-# Include with token_pattern also single characters  
-vectorizer = TfidfVectorizer(lowercase=False, stop_words=None, token_pattern = r"(?u)\b\w+\b")
+# Include with token_pattern also single characters
+vectorizer = TfidfVectorizer(lowercase=False, stop_words=None, token_pattern=r"(?u)\b\w+\b")
 vectors = vectorizer.fit_transform(texts_flattened)
 feature_names = vectorizer.get_feature_names()
 dense = vectors.todense()
@@ -196,14 +193,14 @@ df_tfidf = pd.DataFrame(dense, columns=feature_names)
 
 
 ## Save pickle file
-f = open("Data/output/df_tfidf_200410.pkl","wb")
-pickle.dump(df_tfidf,f)
+f = open("Data/output/df_tfidf_200410.pkl", "wb")
+pickle.dump(df_tfidf, f)
 f.close()
 
 ## Load pickle file df_dfidf
 # if inference == 'on':
 #     pickle_in = open("Data/output/df_tfidf_200410.pkl","rb")
-#     df_tfidf = pickle.load(pickle_in) 
+#     df_tfidf = pickle.load(pickle_in)
 
 
 # =============================================================================
@@ -212,34 +209,40 @@ f.close()
 # Create inverse index which gives document number for each document and where word appears
 
 ## Check unique words
-# all_words = [item for sublist in plot_data for item in sublist]
-# wordsunique = set(all_words)
-# wordsunique = list(wordsunique)
-# len(wordsunique)
+all_words = [item for sublist in plot_data for item in sublist]
+wordsunique = set(all_words)
+wordsunique = list(wordsunique)
+len(wordsunique)
 
 
 ## Dictionary of unique words as values
-# idx2word = dict(enumerate(wordsunique))
-# # Dictionary with the unique words as keys
-# word2idx = {v:k for k,v in idx2word.items()}
+idx2word = dict(enumerate(wordsunique))
+# Dictionary with the unique words as keys
+word2idx = {v:k for k,v in idx2word.items()}
 
+
+# Back-up copy
+plot_data_copy = plot_data.copy()
+
+# words2idx on plot_data
+plot_data = [word2idx.get(w) for w in doc for doc om plot_data]
 
 ## Create dictonary of words
 # Output: dictionary worddic
-# KEY: word 
+# KEY: word
 # VALUES: list of doc indexes where the word occurs plus per doc: word position(s) and tfidf-score
 
 # Train TF-IDF if inference is off (no on)
-if inference != 'on': 
-    
+if inference != 'on':
+
     # Create dictionary with a list as values
     from collections import defaultdict
     worddic = defaultdict(list)
-    
+
     # Loop (for reference and to make the comprehension (see below) a bit more understandable)
     # for i,doc in enumerate(plot_data):
     #     for doc in plot_data:
-    #         for word in set(doc): # set provides unique words in doc 
+    #         for word in set(doc): # set provides unique words in doc
     #             print(word)
     #             # word = str(word)
     #             index = plot_data.index(doc)
@@ -250,10 +253,13 @@ if inference != 'on':
     # Create the dictionary via comprehension to speed up processing
     import time
     start = time.time()
-    [worddic[word].append([plot_data.index(doc), [index for index, w in enumerate(doc) if w == word], dense[i, feature_names.index(word)]]) for i,doc in enumerate(plot_data) for word in set(doc)]
+    [worddic[word].append([plot_data.index(doc),
+                            [index for index, w in enumerate(doc) if w == word],
+                            dense[i, feature_names.index(word)]])
+                            for i, doc in enumerate(plot_data) for word in set(doc)]
     end = time.time()
     print(end - start) # duration 76 sec for biorxiv; duration 11314 sec (3.142 hours) for all datasets
-    
+
     ## Save pickle file
     # f = open("Data/output/worddic_all_200410.pkl","wb")
     # pickle.dump(worddic,f)
@@ -261,14 +267,13 @@ if inference != 'on':
 
 ## Load pickle file worddic
 if inference == 'on':
-    pickle_in = open("Data/output/worddic_all_200410.pkl","rb")
-    worddic = pickle.load(pickle_in) 
+    pickle_in = open("Data/output/worddic_all_200410.pkl", "rb")
+    worddic = pickle.load(pickle_in)
 
 
-## Split dictionary into keys and values 
-# keys = worddic.keys() 
-# values = worddic.values() 
+## Split dictionary into keys and values
+# keys = worddic.keys()
+# values = worddic.values()
 # items = worddic.items()
 # worddic_list = list(worddic.items())
-
 
