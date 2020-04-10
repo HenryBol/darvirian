@@ -17,6 +17,7 @@
 ## Importing the libraries
 import pandas as pd
 import pickle
+import re
 from collections import Counter
 
 
@@ -38,19 +39,19 @@ df = df.append(df_clean_pmc).reset_index(drop=True)
 
 
 ## Load pickle file sentences
-pickle_in = open("Data/output/sentences_200407.pkl","rb")
+pickle_in = open("Data/output/sentences_200410.pkl"," rb")
 sentences = pickle.load(pickle_in) 
 
 ## Load pickle file plot_data
-pickle_in = open("Data/output/plot_data_200407.pkl","rb")
+pickle_in = open("Data/output/plot_data_200410.pkl", "rb")
 plot_data = pickle.load(pickle_in) 
 
 ## Load pickle file df_dfidf (too big too store)
-# pickle_in = open("Data/output/df_tfidf_200407.pkl","rb")
+# pickle_in = open("Data/output/df_tfidf_200410.pkl", "rb")
 # df_tfidf = pickle.load(pickle_in) 
 
 ## Load pickle file worddic
-pickle_in = open("Data/output/worddic_all_200407.pkl","rb")
+pickle_in = open("Data/output/worddic_all_200410.pkl", "rb")
 worddic = pickle.load(pickle_in) 
 
 # ## Split dictionary into keys and values 
@@ -83,157 +84,100 @@ worddic = pickle.load(pickle_in)
 # (6) [(1, 1)]) # fdic_order:  
 # <<<
 
-searchsentence = 'Full-genome phylogenetic analysis'
-
 def search(searchsentence):
-    # remove try statements and change to if-else for speeding up search process (also in ranking)
-    try:
-        # split sentence into individual words 
-        searchsentence = searchsentence.lower()
-        try:
-            words = searchsentence.split(' ')
-        except:
-            words = list(words)
-        enddic = {}
-        idfdic = {}
+    # split sentence into individual words 
+    searchsentence = searchsentence.lower()
+    # split sentence in words and keep characters as in worddic
+    words = searchsentence.split(' ')
+    words = [re.sub(r'[^a-zA-Z.]', '', str(w)) for w in words]
+
+    # temp dictionaries    
+    enddic = {}
+    idfdic = {}
+    closedic = {}
+    
+    # remove words if not in worddic (keep only the words that are in the dictionary)
+    # realwords = []            
+    # for word in words:
+    #     if word in list(worddic.keys()):
+    #         realwords.append(word)  
+    words = [word for word in words if word in worddic.keys()]
+    numwords = len(words)
+    
+
+    # metrics fullcount_order and fullidf_order: sum of number of occurences of all words in each doc (fullcount_order) and sum of TF-IDF score (fullidf_order)
+    for word in words:
+        # print(word)
+        for indpos in worddic[word]:
+            # print(indpos)
+            index = indpos[0]
+            amount = len(indpos[1])
+            idfscore = indpos[2]
+            # check if the index is already in the dictionary: add values to the keys
+            if index in enddic.keys(): 
+                enddic[index] += amount
+                idfdic[index] += idfscore
+            # if not, just make a two new keys and store the values    
+            else:
+                enddic[index] = amount
+                idfdic[index] = idfscore
+    fullcount_order = sorted(enddic.items(), key=lambda x:x[1], reverse=True)
+    fullidf_order = sorted(idfdic.items(), key=lambda x:x[1], reverse=True) 
+
+    # metric combocount_order: percentage of search words (as in dict) that appear in each doc
+    # TODO check when combocountorder > 1 (and is it a reason to give these docs more relevance)
+    alloptions = {k: worddic.get(k) for k in words}
+    comboindex = [item[0] for worddex in alloptions.values() for item in worddex]
+    combocount = Counter(comboindex) # count the time of each index
+    for key in combocount:
+        combocount[key] = combocount[key] / numwords  
+    combocount_order = sorted(combocount.items(), key=lambda x:x[1], reverse=True)
+   
+    # metric closedic: if words appear in same order as in search
+    if len(words) > 1:          
+        x = [index[0] for record in [worddic[z] for z in words] for index in record]
+        y = sorted(list(set([i for i in x if x.count(i) > 1])))
+
+        # dictionary of documents and all positions (for docs with more than one search word in it)
         closedic = {}
-        
-        # remove words if not in worddic 
-        # realwords = []            
-        # for word in words:
-        #     if word in list(worddic.keys()):
-        #         realwords.append(word)  
-        words = [word for word in words if word in worddic.keys()]
-        numwords = len(words)
-        
-        # metrics fullcount_order and fullidf_order: sum of number of occurences of all words in each doc (fullcount_order) and sum of TF-IDF score (fullidf_order)
-        for word in words:
-            # print(word)
-            for indpos in worddic[word]:
-                # print(indpos)
-                index = indpos[0]
-                amount = len(indpos[1])
-                idfscore = indpos[2]
-                # check if the index is already in the dictionary: add values to the keys
-                if index in enddic.keys(): 
-                    enddic[index] += amount
-                    idfdic[index] += idfscore
-                # if not, just make a two new keys and store the values    
-                else:
-                    enddic[index] = amount
-                    idfdic[index] = idfscore
-        fullcount_order = sorted(enddic.items(), key=lambda x:x[1], reverse=True)
-        fullidf_order = sorted(idfdic.items(), key=lambda x:x[1], reverse=True) 
+        for wordbig in [worddic[x] for x in words]:
+            for record in wordbig:
+                if record[0] in y:
+                    index = record[0]
+                    positions = record[1]
+                    try:
+                        closedic[index].append(positions)
+                    except:
+                        closedic[index] = []
+                        closedic[index].append(positions)
+        # CHECK INDEX van closedic 
+        # closedic = [record[1] for wordbig in [worddic[x] for x in words] for record in wordbig if record[0] in y]
 
- # #1049
- # comboindex[1049]
- # comboindex.index(1049)
- 
-        # metric combocount_order: percentage of search words (as in dict) that appear in each doc
-        # TODO check when combocountorder > 1 (and is it a reason to give these docs more relevance)
-        combo = []
-        alloptions = {k: worddic.get(k, None) for k in (words)}
-        for worddex in list(alloptions.values()):
-            for indexpos in worddex:
-                for indexz in indexpos:
-                    combo.append(indexz)
-        comboindex = combo[::3] # slice with stepsize 3 (which gives all indices)
-        combocount = Counter(comboindex)
-        for key in combocount:
-            combocount[key] = combocount[key] / numwords
-        combocount_order = sorted(combocount.items(), key=lambda x:x[1], reverse=True)
-    
-        # metric closedic: if words appear in same order as in search
-        if len(words) > 1:
-            # x = [] # per word: document(s) in which a word appears
-            # y = [] # documents with more than one search word
-            # for record in [worddic[z] for z in words]:
-            #     for index in record:
-            #           x.append(index[0])
-            # all document(s) in which a search word appears (index[0] gives the document number)
-            x = [index[0] for record in [worddic[z] for z in words] for index in record]
-            # for i in x:               
-            #     if x.count(i) > 1: # count number of times a doc occurs in x
-            #         y.append(i)
-            # y = list(set(y))
-            # all document(s) in which more than one search word appears; keep unique values and sort
-            y = sorted(list(set([i for i in x if x.count(i) > 1])))
-
-# def diff(first, second):
-#     second = set(second)
-#     return [item for item in first if item not in second]
-
-# diff(x,x2)
-# diff(x2,x)
-
-
-            # dictionary of documents and all positions (for docs with more than one search word in it)
-            closedic = {}
-            for wordbig in [worddic[x] for x in words]:
-                for record in wordbig:
-                    if record[0] in y:
-                        index = record[0]
-                        positions = record[1]
-                        try:
-                            closedic[index].append(positions)
-                        except:
-                            closedic[index] = []
-                            closedic[index].append(positions)
-
-# x = [index[0] for record in [worddic[z] for z in words] for index in record]
-
-# closedic2 = {key_2: worddic[key_2] for key_2 in y}
-
-# closedic2 = { your_key: old_dict[your_key] for your_key in your_keys }
-
-# dict(zip(keys, [orig[k] for k in keys]))
-# closedic2 = dict(zip(y, [worddic[k] for k in y]))
-
-# worddic[1][]
-
-# dict(worddic)
-
-# passed = { key:value for key, value in marks.items() if value > 50 }
-# closedic2 = { key:value for key, value in dict(worddic).items() if value in y}
-
-# worddic['covid']
-
-# items = worddic.items()
-# items.keys(0)
-
-# fdic_order[0]
-
-# closedic = {k, func(v) for k, v in worddic.items() if k in y}
-
-            # metric: fdic number of times search words appear in a doc in descending order
-            # TODO check
-            x = 0
-            fdic = {}
-            for index in y:
-                csum = []
-                for seqlist in closedic[index]:
-                    while x > 0:
-                        secondlist = seqlist
-                        x = 0
-                        sol = [1 for i in firstlist if i + 1 in secondlist]
-                        csum.append(sol)
-                        fsum = [item for sublist in csum for item in sublist]
-                        fsum = sum(fsum)
-                        fdic[index] = fsum
-                        fdic_order = sorted(fdic.items(), key=lambda x:x[1], reverse=True)
-                    while x == 0:
-                        firstlist = seqlist
-                        x = x + 1
-        else:
-            fdic_order = 0
+        # metric: fdic number of times search words appear in a doc in descending order
+        # TODO check
+        x = 0
+        fdic = {}
+        for index in y:
+            csum = []
+            for seqlist in closedic[index]:
+                while x > 0:
+                    secondlist = seqlist
+                    x = 0
+                    sol = [1 for i in firstlist if i + 1 in secondlist]
+                    csum.append(sol)
+                    fsum = [item for sublist in csum for item in sublist]
+                    fsum = sum(fsum)
+                    fdic[index] = fsum
+                    fdic_order = sorted(fdic.items(), key=lambda x:x[1], reverse=True)
+                while x == 0:
+                    firstlist = seqlist
+                    x = x + 1
+    else:
+        fdic_order = 0
                     
-        # also the one above should be given a big boost if ALL found together           
-        # could make another metric for if they are not next to each other but still close 
+    # TODO another metric for if they are not next to each other but still close 
         
-        return(searchsentence, words, fullcount_order, combocount_order, fullidf_order, fdic_order)
-    
-    except:
-        return("")
+    return(searchsentence, words, fullcount_order, combocount_order, fullidf_order, fdic_order)
 
 
 # =============================================================================
@@ -241,105 +185,117 @@ def search(searchsentence):
 # =============================================================================
 # Create a simple rule based rank and return function
 
-
-term = 'Full-genome phylogenetic analysis'
-
-term = 'Sustainable risk reduction strategies'
-
-df_test = df.text[14738]
-df.columms
-
 def rank(term):
+    
+    # get results from search
     results = search(term)
-    # get metrics 
+    # get metrics
+    num_search_words = len(results[1]) # number of search words found in dictionary
     num_score = results[2] # number of search words (as in dict) in each doc (in descending order)
     per_score = results[3] # percentage of search words (as in dict) in each doc (in descending order)
     tfscore = results[4] # sum of tfidf of search words in each doc (in ascending order)
     order_score = results[5] # fidc order
     
+    # list of documents in order of relevance
     final_candidates = []
-
-    # rule1: doc with high fidc order_score (>1) & 100% percentage search words (as in dict) on no. 1 position
-    try:
+    
+    # no search term(s) not found
+    if num_search_words == 0:    
+        print('Search term(s) not found')
+    
+    # single term searched (as in dict): return the following 5 scores
+    if num_search_words == 1:
+        final_candidates = [num_score[0][0], num_score[1][0], num_score[2][0], per_score[0][0], tfscore[0][0]]
+    
+ 
+    # more than one search word (and found in dictionary)
+    if num_search_words > 1: 
+        
+        # rule1: doc with high fidc order_score (>1) & 100% percentage search words (as in dict) on no. 1 position
         first_candidates = []
-
+    
         # first candidate(s) comes from fidc order_score (with value > 1)
         for candidates in order_score: 
             if candidates[1] > 1:
                 first_candidates.append(candidates[0])
-
+    
         second_candidates = []
-
+    
         for match_candidates in per_score:
             # if all words are in a document: add to second_candidates
             # TODO check why per_score sometimes > 1
             if match_candidates[1] >= 1: 
                 second_candidates.append(match_candidates[0])
-            # if all words are in a document and this doc is also in first candidates: add to final_candidates
-            # if match_candidates[1] >= 1 and (match_candidates[0] in first_candidates):
-            #     final_candidates.append(match_candidates[0])
-        # change the above routine to get high value order_scores that are also in per_score 
+        # get high value order_scores that are also in per_score 
         for match_candidates in first_candidates:
             if match_candidates in second_candidates:
                 final_candidates.append(match_candidates)
-
-    # rule2: add max 4 other words with order_score greater than 1 (if not yet in final_candiates)
+    
+        # rule2: add max 4 other words with order_score greater than 1 (if not yet in final_candiates)
         t3_order = first_candidates[0:3]
         for each in t3_order:
             if each not in final_candidates:
                 final_candidates.insert(len(final_candidates),each)
-
-    # rule3: add 2 top td-idf results to final_candidates
+    
+        # rule3: add 2 top td-idf results to final_candidates
         final_candidates.insert(len(final_candidates), tfscore[0][0])
         final_candidates.insert(len(final_candidates), tfscore[1][0])
-
-    # rule4: next add other high percentage score (if not yet in final_candiates)
-        t3_per = second_candidates[0:3] # the first 4 high precentages scores (if equal to 100% of search words in doc)
+    
+        # rule4: next add other high percentage score (if not yet in final_candiates)
+        t3_per = second_candidates[0:3] # the first 4 high percentages scores (if equal to 100% of search words in doc)
         for each in t3_per:
             if each not in final_candidates:
                 final_candidates.insert(len(final_candidates),each)
-
-    # rule5: next add any other no. 1 result in num_score, per_score, tfscore and order_score (if not yet in final_candidates)
+    
+        # rule5: next add any other no. 1 result in num_score, per_score, tfscore and order_score (if not yet in final_candidates)
         othertops = [num_score[0][0], per_score[0][0], tfscore[0][0], order_score[0][0]]
         for top in othertops:
             if top not in final_candidates:
                 final_candidates.insert(len(final_candidates),top)
-                
-    # in case of a single term searched (as in dict): just return the following 5 scores
-    except:
-        othertops = [num_score[0][0], num_score[1][0], num_score[2][0], per_score[0][0], tfscore[0][0]]
-        for top in othertops:
-            if top not in final_candidates:
-                final_candidates.insert(len(final_candidates),top)
 
-    # print final candiates
+
+    # print final candidates
     print('\nFound search words:', results[1])
     print('Ranked papers (document numbers):', final_candidates)
     
     # top results: sentences with search words, paper ID (and documet number), authors and abstract    
     df_results = pd.DataFrame(columns = ['Title', 'Paper_id', 'Document_no', 'Authors', 'Abstract', 'Sentences'])
     for index, results in enumerate(final_candidates):
-        if index < 5:
-
-            df_results.loc[index, 'Title'] = df.title[results]
-            print('\n\nRESULT {}:'. format(index + 1), df.title[results])
-            df_results.loc[index, 'Paper_id'] = df.paper_id[results]
-            df_results.loc[index, 'Document_no'] = results
-            print('\nPaper ID:', df.paper_id[results], '(Document no: {})'. format(results))
-            df_results.loc[index, 'Authors'] = df.authors[results]
-            print('\nAuthors:', df.authors[results])
-            print('\n')
-            df_results.loc[index, 'Abstract'] = df.abstract[results]
-            print(df.abstract[results])
+        # if index < 5:
+            df_results.loc[index+1, 'Title'] = df.title[results]
+            df_results.loc[index+1, 'Paper_id'] = df.paper_id[results]
+            df_results.loc[index+1, 'Document_no'] = results
+            df_results.loc[index+1, 'Authors'] = df.authors[results]
+            df_results.loc[index+1, 'Abstract'] = df.abstract[results]
             search_results = search_sentence(results, term)
-            df_results.loc[index, 'Sentences'] = search_results
-            print('Sentences:\n')
-            print(search_results)
-
+            df_results.loc[index+1, 'Sentences'] = search_results
+            
     return final_candidates, df_results
 
+
+## print final candidates
+# print('\nFound search words:', results[1])
+# print('Ranked papers (document numbers):', final_candidates)
+
+# df_results.loc[index, 'Title'] = df.title[results]
+# print('\n\nRESULT {}:'. format(index + 1), df.title[results])
+# df_results.loc[index, 'Paper_id'] = df.paper_id[results]
+# df_results.loc[index, 'Document_no'] = results
+# print('\nPaper ID:', df.paper_id[results], '(Document no: {})'. format(results))
+# df_results.loc[index, 'Authors'] = df.authors[results]
+# print('\nAuthors:', df.authors[results])
+# print('\n')
+# df_results.loc[index, 'Abstract'] = df.abstract[results]
+# print(df.abstract[results])
+# search_results = search_sentence(results, term)
+# df_results.loc[index, 'Sentences'] = search_results
+# print('Sentences:\n')
+# print(search_results)
+
+
+
 # =============================================================================
-# PART IV: xamples
+# PART IV: Examples
 # =============================================================================
 # Search return(searchsentence,words,fullcount_order,combocount_order,fullidf_order,fdic_order)
 search('Full-genome phylogenetic analysis')[1]
@@ -383,7 +339,7 @@ search('Sustainable risk reduction strategies')
 rank('Sustainable risk reduction strategies')
 
 final_candidates, rank_result = rank('Sustainable risk reduction strategies')
-rank_result.to_csv('Data/output/rank_result_0200407.csv')
+rank_result.to_csv('Data/output/rank_result_0200410.csv')
 
 # =============================================================================
 # CASE 1: Real-time tracking of whole genomes
@@ -392,7 +348,7 @@ rank('Real-time tracking of whole genomes and a mechanism for coordinating the r
 
 final_candidates, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
 
-rank_result.to_csv('Data/output/rank_result_0200407.csv')
+rank_result.to_csv('Data/output/rank_result_0200410.csv')
 
 final_candidates, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
-rank_result.to_csv('Data/output/rank_result_0200407-2.csv')
+rank_result.to_csv('Data/output/rank_result_0200410-2.csv')
