@@ -37,6 +37,7 @@ df = df_biorxiv.append(df_clean_comm_use).reset_index(drop=True)
 df = df.append(df_clean_noncomm_use).reset_index(drop=True)
 df = df.append(df_clean_pmc).reset_index(drop=True)
 
+df.columns
 
 ## Load pickle file sentences
 pickle_in = open('Data/output/sentences_200407.pkl', 'rb')
@@ -68,7 +69,7 @@ worddic = pickle.load(pickle_in)
 # (3) fullcount_order: number of occurences of search words
 # (4) combocount_order: percentage of search terms
 # (5) fullidf_order: sum of TD-IDF scores for search words (in ascending order)
-# (6)) fdic_order: exact match bonus (# ()) Word ordering score )
+# (6)) fdic_order: exact match bonus: word ordering score
 
 # >>> example on limited dataset (first three docs of biorxiv))
 # search('Full-genome phylogenetic analysis')
