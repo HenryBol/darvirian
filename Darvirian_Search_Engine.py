@@ -105,7 +105,7 @@ df.Sentences = [sent_tokenize(df.Raw_Text[i]) for i in range(len(df)) if len(df.
 
 sentences = df.Sentences
 
-## Save df.Sentences file
+## Save sentences file
 # f = open("Data/output/sentences_200410.pkl","wb")
 # pickle.dump(sentences, f)
 # f.close()
@@ -162,9 +162,9 @@ plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
 
 
 ## Save plot_data file
-f = open("Data/output/plot_data_200410.pkl", "wb")
-pickle.dump(plot_data, f)
-f.close()
+# f = open("Data/output/plot_data_200410.pkl", "wb")
+# pickle.dump(plot_data, f)
+# f.close()
 
 ## Load pickle file plot_data
 if inference == 'on':
@@ -192,10 +192,10 @@ df_tfidf = pd.DataFrame(dense, columns=feature_names)
 # print('Found %s unique tokens.' % V)
 
 
-## Save pickle file
-f = open("Data/output/df_tfidf_200410.pkl", "wb")
-pickle.dump(df_tfidf, f)
-f.close()
+## Save pickle file (too big to create)
+# f = open("Data/output/df_tfidf_200410.pkl", "wb")
+# pickle.dump(df_tfidf, f)
+# f.close()
 
 ## Load pickle file df_dfidf
 # if inference == 'on':
@@ -209,23 +209,24 @@ f.close()
 # Create inverse index which gives document number for each document and where word appears
 
 ## Check unique words
-all_words = [item for sublist in plot_data for item in sublist]
-wordsunique = set(all_words)
-wordsunique = list(wordsunique)
-len(wordsunique)
+# all_words = [item for sublist in plot_data for item in sublist]
+# wordsunique = set(all_words)
+# wordsunique = list(wordsunique)
+# len(wordsunique)
 
 
-## Dictionary of unique words as values
-idx2word = dict(enumerate(wordsunique))
-# Dictionary with the unique words as keys
-word2idx = {v:k for k,v in idx2word.items()}
+# ## Dictionary of unique words as values
+# idx2word = dict(enumerate(wordsunique))
+# # Dictionary with the unique words as keys
+# word2idx = {v:k for k,v in idx2word.items()}
 
 
-# Back-up copy
-plot_data_copy = plot_data.copy()
+# # Back-up copy
+# plot_data_copy = plot_data.copy()
 
-# words2idx on plot_data
-plot_data = [word2idx.get(w) for w in doc for doc om plot_data]
+# # words2idx on plot_data
+# plot_data = [[word2idx.get(w) for w in doc] for doc in plot_data]
+
 
 ## Create dictonary of words
 # Output: dictionary worddic
@@ -253,10 +254,11 @@ if inference != 'on':
     # Create the dictionary via comprehension to speed up processing
     import time
     start = time.time()
-    [worddic[word].append([plot_data.index(doc),
-                            [index for index, w in enumerate(doc) if w == word],
-                            dense[i, feature_names.index(word)]])
-                            for i, doc in enumerate(plot_data) for word in set(doc)]
+    [worddic[word].append([plot_data.index(doc), 
+                            [index for index, w in enumerate(doc) if w == word], 
+                            df_tfidf.loc[i, word]]) 
+                            for i,doc in enumerate(plot_data) for word in set(doc)]
+ 
     end = time.time()
     print(end - start) # duration 76 sec for biorxiv; duration 11314 sec (3.142 hours) for all datasets
 
