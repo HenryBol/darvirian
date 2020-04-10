@@ -151,23 +151,18 @@ def search(searchsentence):
         for index in y: # list with docs with more than one search word
             csum = []            
             for seqlist in closedic[index]:
-                print(seqlist)
                 while x > 0:
                     secondlist = seqlist # second word positions
-                    print(x, secondlist)
                     x = 0
                     # first and second word next to each other (in same order)
                     sol = [1 for i in firstlist if i + 1 in secondlist]
-                    print(sol)
                     csum.append(sol)
                     fsum = [item for sublist in csum for item in sublist] 
                     fsum = sum(fsum) 
                     fdic[index] = fsum
                     fdic_order = sorted(fdic.items(), key=lambda x: x[1], reverse=True)
-                    print(fdic_order)
                 while x == 0:
                     firstlist = seqlist # first word positions 
-                    print(x, firstlist)
                     x = x + 1 
     else:
         fdic_order = 0
@@ -278,7 +273,7 @@ def rank(term):
 def search_sentence(doc_number, search_term):
     sentence_index = []
     search_list = search_term.split()
-    for sentence in df.Sentences[doc_number]:
+    for sentence in sentences[doc_number]:
         for search_word in search_list:
             if search_word.lower() in sentence.lower():
                 sentence_index.append(sentence) # df.Sentences[doc_number].index(sentence)
@@ -303,7 +298,6 @@ def search_sentence(doc_number, search_term):
 # df_results.loc[index, 'Sentences'] = search_results
 # print('Sentences:\n')
 # print(search_results)
-
 
 
 # =============================================================================
@@ -357,6 +351,7 @@ searchsentence = 'Full-genome phylogenetic'
 searchsentence = 'Full-genome phylogenetic analysis'
 searchsentence = 'duties farmer'
 
+
 # =============================================================================
 # CASE 0: Sustainable risk reduction strategies
 # =============================================================================
@@ -366,6 +361,7 @@ rank('Sustainable risk reduction strategies')
 
 papers, rank_result = rank('Sustainable risk reduction strategies')
 rank_result.to_csv('Data/output/rank_result_0200410.csv')
+
 
 # =============================================================================
 # CASE 1: Real-time tracking of whole genomes
