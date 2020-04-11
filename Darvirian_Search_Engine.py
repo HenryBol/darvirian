@@ -263,14 +263,14 @@ if inference != 'on':
     print(end - start) # duration 76 sec for biorxiv; duration 11314 sec (3.142 hours) for all datasets
 
     ## Save pickle file
-    # f = open("Data/output/worddic_all_200410.pkl","wb")
-    # pickle.dump(worddic,f)
-    # f.close()
+    f = open("Data/output/worddic_all_200410.pkl","wb")
+    pickle.dump(worddic,f)
+    f.close()
 
 ## Load pickle file worddic
-if inference == 'on':
-    pickle_in = open("Data/output/worddic_all_200410.pkl", "rb")
-    worddic = pickle.load(pickle_in)
+# if inference == 'on':
+#     pickle_in = open("Data/output/worddic_all_200410.pkl", "rb")
+#     worddic = pickle.load(pickle_in)
 
 
 ## Split dictionary into keys and values
