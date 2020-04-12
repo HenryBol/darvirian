@@ -80,6 +80,11 @@ df['Raw_Text'] = df['text']
 # doc_to_paper_id = df.paper_id.reset_index()
 # doc_to_paper_id.to_csv('Data/output/doc_to_paper.csv')
 
+# Slice for short df
+# df.columns
+# df = df[['paper_id', 'title', 'authors', 'affiliations', 'abstract', 'bibliography']]
+# df.to_csv('Data/output/df.csv')
+df = read_csv('df.csv')
 
 # =============================================================================
 # PART I: PREPROCESSING
@@ -162,13 +167,13 @@ plot_data = [[w for w in line if w not in stop_words] for line in plot_data]
 
 
 ## Save plot_data file
-# f = open("Data/output/plot_data_200410.pkl", "wb")
-# pickle.dump(plot_data, f)
-# f.close()
+f = open("Data/output/plot_data_200411.pkl", "wb")
+pickle.dump(plot_data, f)
+f.close()
 
 ## Load pickle file plot_data
 if inference == 'on':
-    pickle_in = open("Data/output/plot_data_200410.pkl", "rb")
+    pickle_in = open("Data/output/plot_data_200411.pkl", "rb")
     plot_data = pickle.load(pickle_in)
 
 
