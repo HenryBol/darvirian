@@ -55,7 +55,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 # LOAD THE DATA
 # =============================================================================
 ## Read docs from CORD-19
-# import os
+import os
 # os.chdir("../Data/CSV")
 df_biorxiv = pd.read_csv('Data/CSV/biorxiv_clean.csv')
 df_clean_comm_use = pd.read_csv('Data/CSV/clean_comm_use.csv')
@@ -81,10 +81,13 @@ df['Raw_Text'] = df['text']
 # doc_to_paper_id.to_csv('Data/output/doc_to_paper.csv')
 
 # Slice for short df
-# df.columns
-# df = df[['paper_id', 'title', 'authors', 'affiliations', 'abstract', 'bibliography']]
+df.columns
+df = df[['paper_id', 'title', 'authors', 'affiliations', 'abstract', 'bibliography']]
 # df.to_csv('Data/output/df.csv')
-df = read_csv('df.csv')
+# df = pd.read_csv('Data/output/df.csv')
+f = open("Data/output/df.pkl","wb")
+pickle.dump(df, f)
+f.close()
 
 # =============================================================================
 # PART I: PREPROCESSING

@@ -273,7 +273,7 @@ def rank(term):
     return final_candidates, df_results
 
 
-# Find sentence of search word(s)ß
+# Find sentence of search word(s)
 def search_sentence(doc_number, search_term):
     sentence_index = []
     search_list = search_term.split()
@@ -346,7 +346,7 @@ rank('Full-genome phylogenetic analysis')
 search('farmer')
 search('Manhattan')
 search('duties')
-df.text[36]
+# df.text[36]
 
 worddic['PCR']
 worddic['covid']
@@ -378,3 +378,5 @@ rank_result.to_csv('Data/output/rank_result_0200410.csv')
 
 papers, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
 rank_result.to_csv('Data/output/rank_result_0200410-2.csv')
+    
+    
