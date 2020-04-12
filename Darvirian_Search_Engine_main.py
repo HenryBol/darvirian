@@ -27,25 +27,28 @@ import pandas as pd
 ## Read docs from CORD-19
 # import os
 # os.chdir("../Data/CSV")
-df_biorxiv = pd.read_csv('Data/CSV/biorxiv_clean.csv')
-df_clean_comm_use = pd.read_csv('Data/CSV/clean_comm_use.csv')
-df_clean_noncomm_use = pd.read_csv('Data/CSV/clean_noncomm_use.csv')
-df_clean_pmc = pd.read_csv('Data/CSV/clean_pmc.csv')
+# df_biorxiv = pd.read_csv('Data/CSV/biorxiv_clean.csv')
+# df_clean_comm_use = pd.read_csv('Data/CSV/clean_comm_use.csv')
+# df_clean_noncomm_use = pd.read_csv('Data/CSV/clean_noncomm_use.csv')
+# df_clean_pmc = pd.read_csv('Data/CSV/clean_pmc.csv')
 
-# Add all dataframes togethers
-df = df_biorxiv.append(df_clean_comm_use).reset_index(drop=True)
-df = df.append(df_clean_noncomm_use).reset_index(drop=True)
-df = df.append(df_clean_pmc).reset_index(drop=True)
+# # Add all dataframes togethers
+# df = df_biorxiv.append(df_clean_comm_use).reset_index(drop=True)
+# df = df.append(df_clean_noncomm_use).reset_index(drop=True)
+# df = df.append(df_clean_pmc).reset_index(drop=True)
 
-df.columns
+# df.columns
+
+# Load snall version of df with papers
+df = pd.read_csv('Data/output/df.csv')
 
 ## Load pickle file sentences
 pickle_in = open('Data/output/sentences_200407.pkl', 'rb')
 sentences = pickle.load(pickle_in)
 
 ## Load pickle file plot_data
-pickle_in = open('Data/output/plot_data_200407.pkl', 'rb')
-plot_data = pickle.load(pickle_in)
+# pickle_in = open('Data/output/plot_data_200407.pkl', 'rb')
+# plot_data = pickle.load(pickle_in)
 
 ## Load pickle file worddic
 pickle_in = open('Data/output/worddic_all_200407.pkl', 'rb')
