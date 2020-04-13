@@ -84,7 +84,6 @@ worddic = pickle.load(pickle_in)
 # (6) [(1, 1)]) # fdic_order: doc 1 has once two search words next to each other
 # <<<
 
-
 def search(searchsentence):
     # split sentence into individual words
     searchsentence = searchsentence.lower()
@@ -375,6 +374,7 @@ rank('Sustainable risk reduction strategies')
 papers, rank_result = rank('Sustainable risk reduction strategies')
 rank_result.to_csv('Data/output/rank_result_0200410.csv')
 
+# Number of keywords in highest ranking document
 Counter(rank_result.Search_words.iloc[0])
 
 
