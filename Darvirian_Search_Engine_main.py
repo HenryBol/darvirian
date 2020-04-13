@@ -43,7 +43,7 @@ import pandas as pd
 df = pd.read_csv('Data/output/df.csv')
 
 ## Load pickle file sentences
-pickle_in = open('Data/output/sentences_200407.pkl', 'rb')
+pickle_in = open('Data/output/sentences_200410.pkl', 'rb')
 sentences = pickle.load(pickle_in)
 
 ## Load pickle file plot_data
@@ -51,7 +51,7 @@ sentences = pickle.load(pickle_in)
 # plot_data = pickle.load(pickle_in)
 
 ## Load pickle file worddic
-pickle_in = open('Data/output/worddic_all_200407.pkl', 'rb')
+pickle_in = open('Data/output/worddic_all_200410.pkl', 'rb')
 worddic = pickle.load(pickle_in)
 
 # ## Split dictionary into keys and values
@@ -76,13 +76,14 @@ worddic = pickle.load(pickle_in)
 
 # >>> example on limited dataset (first three docs of biorxiv))
 # search('Full-genome phylogenetic analysis')
-# (1) ('full-genome phylogenetic analysis',  # searchsentence: original searh sentence
+# (1) ('full-genome phylogenetic analysis',  # searchsentence: original search sentence
 # (2) ['phylogenetic', 'analysis'], # words: two of the search words are in the dictionary worddic
 # (3) [(1, 7), (0, 1)], # fullcount_order: the search words (as found in dict) occur in total 7 times in doc 1 and 1 time in doc 0
 # (4) [(1, 1.0), (0, 0.5)], # combocount_order: max value is 1, in doc 1 all searchwords (as in dict) are present (1), in doc 0 only 1 of the 2 search words are present (0.5)
 # (5) [(1, 0.0025220519886750533), (0, 0.0005167452472220973)], # fullidf_order: doc 1 has a total (sum) tf-idf of 0.0025220519886750533, doc 0 a total tf-idf of 0.0005167452472220973
 # (6) [(1, 1)]) # fdic_order: doc 1 has once two search words next to each other
 # <<<
+
 
 def search(searchsentence):
     # split sentence into individual words
@@ -130,7 +131,9 @@ def search(searchsentence):
 
     # metric closedic: if words appear in same order as in search
     if len(words) > 1:
+        # list with docs with a search word        
         x = [index[0] for record in [worddic[z] for z in words] for index in record]
+        # list with docs with more than one search word
         y = sorted(list(set([i for i in x if x.count(i) > 1])))
 
         # dictionary of documents and all positions (for docs with more than one search word in it)
@@ -186,6 +189,8 @@ def rank(term):
     # get results from search
     results = search(term)
     # get metrics
+    # TODO ADDED LINE
+    search_words = results[1] # search words found in dictionary
     num_search_words = len(results[1]) # number of search words found in dictionary
     num_score = results[2] # number of search words (as in dict) in each doc (in descending order)
     per_score = results[3] # percentage of search words (as in dict) in each doc (in descending order)
@@ -259,7 +264,7 @@ def rank(term):
     print('Ranked papers (document numbers):', final_candidates)
 
     # top results: sentences with search words, paper ID (and documet number), authors and abstract
-    df_results = pd.DataFrame(columns=['Title', 'Paper_id', 'Document_no', 'Authors', 'Abstract', 'Sentences'])
+    df_results = pd.DataFrame(columns=['Title', 'Paper_id', 'Document_no', 'Authors', 'Abstract', 'Sentences', 'Search_words'])
     for index, results in enumerate(final_candidates):
         # if index < 5:
         df_results.loc[index+1, 'Title'] = df.title[results]
@@ -269,6 +274,10 @@ def rank(term):
         df_results.loc[index+1, 'Abstract'] = df.abstract[results]
         search_results = search_sentence(results, term)
         df_results.loc[index+1, 'Sentences'] = search_results
+        
+        # # TODO ADDED LINES
+        # Find search words per document 
+        df_results.loc[index+1, 'Search_words'] = [word for word in search_words for sub_list in sentences[results] if word in sub_list]
 
     return final_candidates, df_results
 
@@ -365,6 +374,8 @@ rank('Sustainable risk reduction strategies')
 
 papers, rank_result = rank('Sustainable risk reduction strategies')
 rank_result.to_csv('Data/output/rank_result_0200410.csv')
+
+Counter(rank_result.Search_words.iloc[0])
 
 
 # =============================================================================

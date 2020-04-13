@@ -111,6 +111,8 @@ df['Raw_Text'] = [x.replace('\n', ' ') for x in df['Raw_Text']]
 df['Sentences'] = None
 df.Sentences = [sent_tokenize(df.Raw_Text[i]) for i in range(len(df)) if len(df.Raw_Text[i]) != 0]
 
+# TODO Check "" and '' quotes in sentences
+
 sentences = df.Sentences
 
 ## Save sentences file
