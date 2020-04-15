@@ -18,7 +18,5 @@ CORD-19 provides the following sets with documents:
 - custom_license (20.657)
 - noncomm_use_subset (2.350)
 
-The AWS S3 bucket 'darvirian' has all documents in one folder 
-
 # The Thinking Machine
 A space for thought and more
