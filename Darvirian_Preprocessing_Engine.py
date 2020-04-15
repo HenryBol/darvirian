@@ -137,7 +137,7 @@ plot_data = [[word.lower() for word in doc] for doc in plot_data]
 
 ## Remove stop words from all docs
 stop_words = set(stopwords.words('english'))
-plot_data = [[word for word in line if word not in stop_words] for line in plot_data]
+plot_data = [[word for word in doc if word not in stop_words] for doc in plot_data]
 
 
 ## Remove words that occur only once in all documents
@@ -150,7 +150,7 @@ num_of_words_sorted = [(l,k) for k,l in sorted([(j,i) for i,j in num_of_words.it
 words_low_freq = [word[0] for word in num_of_words_sorted if word[1] == 1]
 
 # Remove words with a frequency of 1 (this takes a while) = this takes too much time
-# plot_data = [[word for word in lin e if word not in words_low_freq] for line in plot_data]
+# plot_data = [[word for word in doc if word not in words_low_freq] for doc in plot_data]
 
 
 ## TODO Stemming or lemmatization
