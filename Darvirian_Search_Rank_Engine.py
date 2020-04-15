@@ -411,7 +411,7 @@ for index in range (1,4):
     text_sentences_split = [word for line in text_sentences for word in line.split()]
     wordcloud = WordCloud()
     img = wordcloud.generate_from_text(' '.join(text_sentences_split))
-    img.to_file('wordcloud.jpeg')
+    img.to_file('wordcloud{}.jpeg'.format(index))
  
     # plot word cloud       
     # plt.imshow(img)
@@ -420,7 +420,7 @@ for index in range (1,4):
     # image.show()
     
     # %pylab inline
-    img=mpimg.imread('wordcloud.jpeg')
+    img=mpimg.imread('wordcloud{}.jpeg'.format(index))
     imgplot = plt.imshow(img)
     # plt.show()
 

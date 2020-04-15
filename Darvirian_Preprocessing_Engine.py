@@ -58,7 +58,9 @@ df = df.append(df_clean_pmc).reset_index(drop=True)
 
 ## Series plot_data with text (all documents)
 plot_data = df['text']
- 
+
+# TODO check documents in other languages than English (e.g. German)
+
 # Create Documentnumber to PaperID table
 # doc_to_paper_id = df.paper_id.reset_index()
 # doc_to_paper_id.to_csv('Data/output/doc_to_paper.csv')
@@ -148,10 +150,12 @@ num_of_words_sorted = [(l,k) for k,l in sorted([(j,i) for i,j in num_of_words.it
 
 # All words with a frequency of 1 (word[0] is a word and word[1] the frequency)
 words_low_freq = [word[0] for word in num_of_words_sorted if word[1] == 1]
+# Set to increase speed
+words_low_freq = set(words_low_freq)
 
 # Remove words with a frequency of 1 (this takes a while) = this takes too much time
 # plot_data = [[word for word in doc if word not in words_low_freq] for doc in plot_data]
-
+plot_data = [[word for word in doc if word not in words_low_freq] for doc in plot_data]
 
 ## TODO Stemming or lemmatization
 #snowball_stemmer = SnowballStemmer("english")
@@ -165,7 +169,7 @@ words_low_freq = [word[0] for word in num_of_words_sorted if word[1] == 1]
 
 
 ## Save plot_data file
-f = open("Data/output/plot_data_200415.pkl", "wb")
+f = open("Data/output/plot_data_200415-2.pkl", "wb")
 pickle.dump(plot_data, f)
 f.close()
 
@@ -192,7 +196,7 @@ word2idx = dict(zip(feature_names, range(len(feature_names))))
 
 
 # Save word2idx file
-f = open("Data/output/word2idx_200415.pkl", "wb")
+f = open("Data/output/word2idx_200415-2.pkl", "wb")
 pickle.dump(word2idx, f)
 f.close()
 
@@ -200,7 +204,7 @@ f.close()
 idx2word = {v:k for k,v in word2idx.items()}
 
 ## Save idx2word file
-f = open("Data/output/idx2word_200415.pkl", "wb")
+f = open("Data/output/idx2word_200415-2.pkl", "wb")
 pickle.dump(idx2word, f)
 f.close()
 
@@ -223,7 +227,7 @@ df_tfidf = pd.DataFrame(dense, columns=features_names_num)
 plot_data = [[word2idx.get(word) for word in line] for line in plot_data]
 
 # Save plot_data_num file
-f = open("Data/output/plot_data_200415_num.pkl", "wb")
+f = open("Data/output/plot_data_200415_num-2.pkl", "wb")
 pickle.dump(plot_data, f)
 f.close()
 
@@ -255,18 +259,21 @@ worddic = defaultdict(list)
 #             worddic[word].append([index,positions,idfs])
 
 # Create the dictionary via comprehension to speed up processing
+# Set to speed up
+doc = set(doc) 
 import time
 start = time.time()
 [worddic[word].append([plot_data.index(doc), 
                         [index for index, w in enumerate(doc) if w == word], 
                         df_tfidf.loc[i, word]]) 
-                        for i,doc in enumerate(plot_data) for word in set(doc)]
+                        # for i,doc in enumerate(plot_data) for word in set(doc)]
+                        for i,doc in enumerate(plot_data) for word in doc]
 end = time.time()
 print(end - start) # duration 63 sec for biorxiv; duration 11314 sec (3.142 hours) for all datasets
 
 
 ## Save pickle file
-f = open("Data/output/worddic_all_200415_num.pkl","wb")
+f = open("Data/output/worddic_all_200415_num-2.pkl","wb")
 pickle.dump(worddic,f)
 f.close()
 
