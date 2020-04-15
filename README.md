@@ -8,8 +8,8 @@ Kaggle CORD-19-research-challenge: What do we know about virus genetics, origin,
 https://www.kaggle.com/allen-institute-for-ai/CORD-19-research-challenge/tasks?taskId=567
 
 # Code
-- Darvirian_Search_Engine: preprocessing of data
-- Darvirian_Search_Engine_Main: main functions of search and rank 
+- Darvirian_Preprocessing_Engine: preprocessing of data
+- Darvirian_Search_Rank_Engine: main functions of search and rank 
 
 # Data 
 CORD-19 provides the following sets with documents:
