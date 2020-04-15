@@ -8,7 +8,8 @@ Kaggle CORD-19-research-challenge: What do we know about virus genetics, origin,
 https://www.kaggle.com/allen-institute-for-ai/CORD-19-research-challenge/tasks?taskId=567
 
 # Code
-
+- Darvirian_Search_Engine: preprocessing of data
+- Darvirian_Search_Engine_Main: main functions of search and rank 
 
 # Data 
 CORD-19 provides the following sets with documents:
@@ -17,12 +18,7 @@ CORD-19 provides the following sets with documents:
 - custom_license (20.657)
 - noncomm_use_subset (2.350)
 
-Github limits the number of files per subfolder to 1000
-
 The AWS S3 bucket 'darvirian' has all documents in one folder 
-
-# Hackaton for Good
-Contains code for a Search Engine as built for the Hackaton for Good Challenge
 
 # The Thinking Machine
 A space for thought and more
