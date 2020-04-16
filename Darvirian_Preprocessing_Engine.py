@@ -90,13 +90,12 @@ plot_data = df['text']
 duplicate_papers = df[df.paper_id.duplicated()] # None
 
 
-## Replace '\n' by ' '
-plot_data = [x.replace('\n', ' ') for x in plot_data]
-
-
-## Keep original sentences and tokenize
+## ! Check without removing the '\n' Keep original sentences and tokenize
 sentences = [sent_tokenize(plot_data[i]) for i in range(len(plot_data)) if len(plot_data[i]) != 0]
 
+
+## Replace '\n' by ' '
+plot_data = [x.replace('\n', ' ') for x in plot_data]
 
 # TODO include '-' 
 # rank('Full-genome phylogenetic analysis'): full-genome is not taken into account
@@ -191,9 +190,9 @@ vectors = vectorizer.fit_transform(texts_flattened)
 feature_names = vectorizer.get_feature_names()
 dense = vectors.todense()
 
-# ## Dictionary of unique words as values
-word2idx = dict(zip(feature_names, range(len(feature_names))))
 
+## Dictionary of unique words as values
+word2idx = dict(zip(feature_names, range(len(feature_names))))
 
 # Save word2idx file
 f = open("Data/output/word2idx_200415-2.pkl", "wb")
@@ -260,14 +259,14 @@ worddic = defaultdict(list)
 
 # Create the dictionary via comprehension to speed up processing
 # Set to speed up
-doc = set(doc) 
+# doc2 = set(doc) 
 import time
 start = time.time()
 [worddic[word].append([plot_data.index(doc), 
                         [index for index, w in enumerate(doc) if w == word], 
                         df_tfidf.loc[i, word]]) 
-                        # for i,doc in enumerate(plot_data) for word in set(doc)]
-                        for i,doc in enumerate(plot_data) for word in doc]
+                        for i,doc in enumerate(plot_data) for word in set(doc)]
+                        # for i,doc in enumerate(plot_data) for word in doc2]
 end = time.time()
 print(end - start) # duration 63 sec for biorxiv; duration 11314 sec (3.142 hours) for all datasets
 

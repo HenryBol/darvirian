@@ -6,7 +6,9 @@
 # PART I: Load the data
 # PART II: The Search Engine: function 'search'
 # PART III: Rank and return (rules based): function 'rank' based on 5 rules and providing summaries
-# PART IV: examples
+# PART IV: Function search sentence
+# PART V: Function print result (ranked papers)
+# PART VI: Examples 
 # CASE 0: Sustainable risk reduction strategies
 
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
@@ -18,11 +20,11 @@ from collections import Counter
 import re
 import pickle
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from wordcloud import WordCloud
-from termcolor import colored
-from PIL import Image
+# from PIL import Image
 
 
 # =============================================================================
@@ -44,7 +46,8 @@ from PIL import Image
 # df.columns
 
 # Load small version of df with papers
-df = pd.read_csv('Data/output/df.csv')
+pickle_in = open('Data/output/df.pkl', 'rb')
+df = pickle.load(pickle_in)
 
 # Load pickle file sentences
 pickle_in = open('Data/output/sentences_200415.pkl', 'rb')
@@ -54,7 +57,11 @@ sentences = pickle.load(pickle_in)
 # pickle_in = open('Data/output/plot_data_200407.pkl', 'rb')
 # plot_data = pickle.load(pickle_in)
 
-# Load pickle file worddic numeric version)
+# Load pickle file worddic (word version)
+# pickle_in = open('Data/output/worddic_all_200410.pkl', 'rb')
+# worddic = pickle.load(pickle_in)
+
+# Load pickle file worddic (numeric version)
 pickle_in = open('Data/output/worddic_all_200415_num.pkl', 'rb')
 worddic = pickle.load(pickle_in)
 
@@ -151,9 +158,12 @@ def search(searchsentence):
         # list with docs with a search word        
         x = [index[0] for record in [worddic[z] for z in words] for index in record]
         # list with docs with more than one search word
-        y = sorted(list(set([i for i in x if x.count(i) > 1])))
+        # y = sorted(list(set([i for i in x if x.count(i) > 1])))
+        counts = np.bincount(x)
+        y = list(np.where([counts>1])[1])
 
         # dictionary of documents and all positions (for docs with more than one search word in it)
+        # TODO speed up
         closedic = {}
         for wordbig in [worddic[x] for x in words]:
             for record in wordbig:
@@ -165,9 +175,13 @@ def search(searchsentence):
                     except:
                         closedic[index] = []
                         closedic[index].append(positions)
-        # Index add to comprehension:
+        # TODO check comprehension:
+        # closedic2 = {}
         # closedic2 = [record[1] for wordbig in [worddic[x] for x in words] for record in wordbig if record[0] in y]
-
+        # TODO check defaultdict
+        # closedic2 = defaultdict(list)
+        # [closedic2[index].append(record[1]) for wordbig in [worddic[x] for x in words] for record in wordbig if record[0] in y]
+        
 
         ## metric: fdic number of times search words appear in a doc in descending order
         x = 0
@@ -192,6 +206,7 @@ def search(searchsentence):
         fdic_order = 0
 
 
+        ## TODO add metric serach words in abstract
         ## TODO another metric for if they are not next to each other but still close
     
     
@@ -204,7 +219,7 @@ def search(searchsentence):
 # =============================================================================
 # PART III: Rank and return (rule based)
 # =============================================================================
-# Create a simple rule based rank and return function
+# Create a rule based rank and return function
 
 def rank(term):
 
@@ -258,8 +273,13 @@ def rank(term):
         for match_candidates in first_candidates:
             if match_candidates in second_candidates:
                 final_candidates.append(match_candidates)
+                
+        # rule 1a: add first document with 100% match of search_words
+        # TODO check other scores highest ranking
+        if per_score[0][1] == 1: # percentage score of first document number with 100% score
+            final_candidates.append(per_score[0][0]) # document number
 
-        # rule2: add max 4 other words with order_score greater than 1 (if not yet in final_candiates)
+        # rule2: add max 4 other words with order_score greater than 1 (if not yet in final_candidates)
         t3_order = first_candidates[0:3]
         for each in t3_order:
             if each not in final_candidates:
@@ -290,34 +310,110 @@ def rank(term):
     df_results = pd.DataFrame(columns=['Title', 'Paper_id', 'Document_no', 'Authors', 'Abstract', 'Sentences', 'Search_words'])
     for index, results in enumerate(final_candidates):
         # if index < 5:
-        df_results.loc[index+1, 'Title'] = df.title[results]
-        df_results.loc[index+1, 'Paper_id'] = df.paper_id[results]
-        df_results.loc[index+1, 'Document_no'] = results
-        df_results.loc[index+1, 'Authors'] = df.authors[results]
-        df_results.loc[index+1, 'Abstract'] = df.abstract[results]
-        search_results = search_sentence(results, term)
-        df_results.loc[index+1, 'Sentences'] = search_results
-        
-        # # TODO ADDED LINES
+        df_results.loc[index, 'Title'] = df.title[results]
+        df_results.loc[index, 'Paper_id'] = df.paper_id[results]
+        df_results.loc[index, 'Document_no'] = results
+        df_results.loc[index, 'Authors'] = df.authors[results]
+        df_results.loc[index, 'Abstract'] = df.abstract[results]
+        search_results = search_sentence(results, ' '.join(search_words))
+        df_results.loc[index, 'Sentences'] = search_results
+
         # Find search words per document 
-        df_results.loc[index+1, 'Search_words'] = [word for word in search_words for sub_list in sentences[results] if word in sub_list]
+        df_results.loc[index, 'Search_words'] = [word for word in search_words for sub_list in search_results if word in sub_list]
 
     return final_candidates, df_results
 
 
-# Find sentence of search word(s)
-def search_sentence(doc_number, search_term):
+# =============================================================================
+# PART IV: Function search sentence
+# =============================================================================
+# TODO rewrite without break
+def search_sentence(doc_number, searchsentence):
+    searchsentence = searchsentence.lower()
+    search_words = searchsentence.split(' ')
     sentence_index = []
-    search_list = search_term.split()
     for sentence in sentences[doc_number]:
-        for search_word in search_list:
-            if search_word.lower() in sentence.lower():
-                sentence_index.append(sentence) # df.Sentences[doc_number].index(sentence)
+        # if any(search_word in search_words for search_word in sentence.lower()):
+        for search_word in search_words:
+            if search_word in sentence.lower():
+                sentence_index.append(sentence)
+                break
     return sentence_index
-
+            
 
 # =============================================================================
-# PART IV: Examples
+# PART V: Function print result (ranked papers)
+# =============================================================================
+def print_ranked_papers(ranked_result, top_n=3, show_sentences=True, show_wordcloud=True):
+
+    # Print top n result
+   for index in range(top_n):    
+       
+        if pd.isnull(ranked_result.Title[index]):
+            print('\n\nRESULT {}:'. format(index+1), 'Title not available')
+        else: 
+                print('\n\nRESULT {}:'. format(index+1), ranked_result.Title[index]) # Print Result from 1 and not 0
+        print('\nII Number of search words in paper:', dict(Counter(ranked_result.Search_words.iloc[index])))       
+        print('\nI Paper ID:', ranked_result.Paper_id[index], '(Document no: {})'. format(ranked_result.Document_no[index]))
+        if pd.isnull(ranked_result.Abstract[index]):
+            print('\nIII Authors:', 'Authors not available')
+        else:
+            print('\nIII Authors:', ranked_result.Authors[index])
+        print('\n')
+        if pd.isnull(ranked_result.Abstract[index]):
+            print('Abstract not available')
+        else: 
+            print(ranked_result.Abstract[index])
+            
+        # join all sentences and seperate by a return
+        text_sentences = '\n'.join(ranked_result.Sentences[index])
+        # Spit in seperate words 
+        text_sentences_split = text_sentences.split()
+
+        search_words = list(set(ranked_result.Search_words[index]))
+
+        # Generate cloud word
+        if show_wordcloud == True:
+            text_sentences_split = text_sentences.split()
+            wordcloud = WordCloud()
+            img = wordcloud.generate_from_text(' '.join(text_sentences_split))
+            img.to_file('wordcloud{}.jpeg'.format(index))
+         
+            # plot word cloud       
+            # plt.imshow(img)
+            # plt.close()
+            # image = Image.open('wordcloud.jpeg')
+            # image.show()
+            
+            # %pylab inline
+            img = mpimg.imread('wordcloud{}.jpeg'.format(index))
+            imgplot = plt.imshow(img)
+            plt.show()
+
+        # Show sentences with search words in color
+        if show_sentences == True:
+
+            ## highlight search words
+            # Set color
+            # red = "\033[31m"
+            green = "\033[32m"
+            # blue = "\033[34m"
+            reset = "\033[39m"
+     
+            # wrap search words in color
+            for word in search_words:
+                idxs = [i for i, x in enumerate(text_sentences_split) if x == word]
+                for i in idxs:
+                    text_sentences_split[i] = green + text_sentences_split[i] + reset
+            # join the list back into a string and print
+            text_sentences_colored = ' '.join(text_sentences_split)
+
+            print('IV Sentences in paper containing search words:\n')
+            print(text_sentences_colored)
+    
+
+# =============================================================================
+# PART VI: Examples
 # =============================================================================
 # Search return(searchsentence,words,fullcount_order,combocount_order,fullidf_order,fdic_order)
 search('Full-genome phylogenetic analysis')
@@ -334,7 +430,7 @@ search('Sustainable risk reduction strategies')
 
 
 # Rank (disable return)
-rank('Full-genome phylogenetic analysis')
+rank('Full genome phylogenetic analysis')
 rank('Full genome phylogenetic analysis')
 rank('Full-genome phylogenetic')
 rank('genome phylogenetic')
@@ -370,71 +466,74 @@ searchsentence = 'duties farmer'
 
 
 # =============================================================================
-# CASE 0: Sustainable risk reduction strategies
-# =============================================================================
-search_case_7 = search('Sustainable risk reduction strategies')
-search('Sustainable risk reduction strategies')
-rank('Sustainable risk reduction strategies')
-
-papers, rank_result = rank('Sustainable risk reduction strategies')
-rank_result.to_csv('Data/output/rank_result_0200410.csv')
-
-
-papers, rank_result = rank('Full-genome phylogenetic analysis')
-
-# Number of keywords in highest ranking document
-Counter(rank_result.Search_words.iloc[0])
-
-
-# Print final candidates
-# print('\nFound search words:', results[1])
-# print('Ranked papers (document numbers):', papers)
-
-# Print top 3 result
-for index in range (1,4):    
-
-    print('\n\nRESULT {}:'. format(index), rank_result.Title[index])
-    print('\nPaper ID:', rank_result.Paper_id[index], '(Document no: {})'. format(index))
-    print('\nAuthors:', rank_result.Authors[index])
-    print('\n')
-    print(rank_result.Abstract[index])
-    # join all sentences and seperate by a return
-    # text_sentences = '\n'.join(rank_result.Sentences[index])
-    text_sentences = rank_result.Sentences[index]
-    # highlight search words in text
-    search_words = list(set(rank_result.Search_words[index])) 
-    text_colored = " ".join([colored(text_sentences,'white','on_red') if word in search_words else word for word in text_sentences])
-    print('Sentences in paper containing search words:\n')
-    print(text_colored)
-
-   # Generate cloud word
-    text_sentences_split = [word for line in text_sentences for word in line.split()]
-    wordcloud = WordCloud()
-    img = wordcloud.generate_from_text(' '.join(text_sentences_split))
-    img.to_file('wordcloud{}.jpeg'.format(index))
- 
-    # plot word cloud       
-    # plt.imshow(img)
-    # plt.close()
-    # image = Image.open('wordcloud.jpeg')
-    # image.show()
-    
-    # %pylab inline
-    img=mpimg.imread('wordcloud{}.jpeg'.format(index))
-    imgplot = plt.imshow(img)
-    # plt.show()
-
-
-# =============================================================================
 # CASE 1: Real-time tracking of whole genomes
 # =============================================================================
-rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
-
-final_candidates, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
-
-rank_result.to_csv('Data/output/rank_result_0200410.csv')
-
 papers, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
-rank_result.to_csv('Data/output/rank_result_0200410-2.csv')
-    
-    
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+
+
+# =============================================================================
+# CASE 2: Access to geographic and temporal diverse sample sets
+# =============================================================================
+papers, rank_result = rank('Access to geographic and temporal diverse sample sets to understand geographic distribution and genomic differences, and determine whether there is more than one strain in circulation. Multi-lateral agreements such as the Nagoya Protocol could be leveraged.')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+
+
+# =============================================================================
+# CASE 3: Evidence that livestock could be infected 
+# =============================================================================
+papers, rank_result = rank('Evidence that livestock could be infected (e.g., field surveillance, genetic sequencing, receptor binding) and serve as a reservoir after the epidemic appears to be over.')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+
+
+# =============================================================================
+# CASE 4: Animal host(s) and any evidence of continued spill-over to humans
+# =============================================================================
+papers, rank_result = rank('Animal host(s) and any evidence of continued spill-over to humans')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+
+
+# =============================================================================
+# CASE 5: Socioeconomic and behavioral risk factors for this spill-over
+# =============================================================================
+papers, rank_result = rank('Socioeconomic and behavioral risk factors for this spill-over')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=1, show_sentences=True, show_wordcloud=True)
+
+
+# =============================================================================
+# CASE 6: Sustainable risk reduction strategies
+# =============================================================================
+papers, rank_result = rank('Full-genome phylogenetic analysis')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+
+
