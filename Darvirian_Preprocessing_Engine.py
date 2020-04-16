@@ -94,14 +94,6 @@ duplicate_papers = df[df.paper_id.duplicated()] # None
 sentences = [sent_tokenize(plot_data[i]) for i in range(len(plot_data)) if len(plot_data[i]) != 0]
 
 
-## Replace '\n' by ' '
-plot_data = [x.replace('\n', ' ') for x in plot_data]
-
-# TODO include '-' 
-# rank('Full-genome phylogenetic analysis'): full-genome is not taken into account
-# rank('Full genome phylogenetic analysis'): full genome is taken into account
-
-
 ## Save sentences file
 f = open("Data/output/sentences_200415.pkl","wb")
 pickle.dump(sentences, f)
@@ -111,6 +103,14 @@ f.close()
 # if inference == 'on':
 #     pickle_in = open("Data/output/sentences_200415.pkl", "rb")
 #     sentences = pickle.load(pickle_in)
+
+
+## Replace '\n' by ' '
+plot_data = [x.replace('\n', ' ') for x in plot_data]
+
+# TODO include '-' 
+# rank('Full-genome phylogenetic analysis'): full-genome is not taken into account
+# rank('Full genome phylogenetic analysis'): full genome is taken into account
 
 
 ## Clean text

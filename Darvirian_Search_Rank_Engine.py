@@ -11,6 +11,7 @@
 # PART VI: Examples 
 # CASE 0: Sustainable risk reduction strategies
 
+# Credits:
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
 
 # =============================================================================
@@ -62,15 +63,19 @@ sentences = pickle.load(pickle_in)
 # worddic = pickle.load(pickle_in)
 
 # Load pickle file worddic (numeric version)
-pickle_in = open('Data/output/worddic_all_200415_num.pkl', 'rb')
+# all words besides single characters:
+# pickle_in = open('Data/output/worddic_all_200415_num.pkl', 'rb') 
+# worddic = pickle.load(pickle_in)
+# all words besides single characters and words that occur only once in all docs
+pickle_in = open('Data/output/worddic_all_200415_num-2.pkl', 'rb')
 worddic = pickle.load(pickle_in)
 
 # Load pickle file word2idx
-pickle_in = open('Data/output/word2idx_200415.pkl', 'rb')
+pickle_in = open('Data/output/word2idx_200415-2.pkl', 'rb')
 word2idx = pickle.load(pickle_in)
 
 # Load pickle file idx2word
-pickle_in = open('Data/output/idx2word_200415.pkl', 'rb')
+pickle_in = open('Data/output/idx2word_200415-2.pkl', 'rb')
 idx2word = pickle.load(pickle_in)
 
 # ## Split dictionary into keys and values
@@ -104,6 +109,7 @@ idx2word = pickle.load(pickle_in)
 # <<<
 
 def search(searchsentence):
+    
     # split sentence into individual words
     searchsentence = searchsentence.lower()
     # split sentence in words and keep characters as in worddic
@@ -154,6 +160,7 @@ def search(searchsentence):
 
 
     ## metric closedic: if words appear in same order as in search
+    fdic_order = 0 # initialization in case of a single search word
     if len(words) > 1:
         # list with docs with a search word        
         x = [index[0] for record in [worddic[z] for z in words] for index in record]
@@ -195,18 +202,15 @@ def search(searchsentence):
                     # first and second word next to each other (in same order)
                     sol = [1 for i in firstlist if i + 1 in secondlist]
                     csum.append(sol)
-                    fsum = [item for sublist in csum for item in sublist] 
-                    fsum = sum(fsum) 
+                    fsum = [item for sublist in csum for item in sublist]
+                    fsum = sum(fsum)
                     fdic[index] = fsum
                     fdic_order = sorted(fdic.items(), key=lambda x: x[1], reverse=True)
                 while x == 0:
                     firstlist = seqlist # first word positions 
                     x = x + 1 
-    else:
-        fdic_order = 0
 
-
-        ## TODO add metric serach words in abstract
+        ## TODO add metric search words in abstract
         ## TODO another metric for if they are not next to each other but still close
     
     
@@ -318,7 +322,7 @@ def rank(term):
         search_results = search_sentence(results, ' '.join(search_words))
         df_results.loc[index, 'Sentences'] = search_results
 
-        # Find search words per document 
+        # All search words per document 
         df_results.loc[index, 'Search_words'] = [word for word in search_words for sub_list in search_results if word in sub_list]
 
     return final_candidates, df_results
@@ -352,7 +356,7 @@ def print_ranked_papers(ranked_result, top_n=3, show_sentences=True, show_wordcl
         if pd.isnull(ranked_result.Title[index]):
             print('\n\nRESULT {}:'. format(index+1), 'Title not available')
         else: 
-                print('\n\nRESULT {}:'. format(index+1), ranked_result.Title[index]) # Print Result from 1 and not 0
+            print('\n\nRESULT {}:'. format(index+1), ranked_result.Title[index]) # Print Result from 1 and not 0
         print('\nII Number of search words in paper:', dict(Counter(ranked_result.Search_words.iloc[index])))       
         print('\nI Paper ID:', ranked_result.Paper_id[index], '(Document no: {})'. format(ranked_result.Document_no[index]))
         if pd.isnull(ranked_result.Abstract[index]):
@@ -430,7 +434,8 @@ search('Sustainable risk reduction strategies')
 
 
 # Rank (disable return)
-rank('Full genome phylogenetic analysis')
+papers, rank_result = rank('Full genome phylogenetic analysis')
+papers, rank_result = rank('Sustainable risk reduction strategies')
 rank('Full genome phylogenetic analysis')
 rank('Full-genome phylogenetic')
 rank('genome phylogenetic')
@@ -449,7 +454,7 @@ rank('farmer')
 rank('nagoya protocol')
 
 
-# tests with df_biorxiv only
+# tests with df_biorxiv only0
 term = 'Full-genome phylogenetic analysis'
 rank('Full-genome phylogenetic analysis')
 search('farmer')
@@ -463,6 +468,20 @@ worddic['covid']
 searchsentence = 'Full-genome phylogenetic'
 searchsentence = 'Full-genome phylogenetic analysis'
 searchsentence = 'duties farmer'
+
+
+# =============================================================================
+# Example
+# =============================================================================
+search_example = 'Full-genome phylogenetic analysis'
+
+papers, rank_result = rank(search_example)
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
 
 
 # =============================================================================
