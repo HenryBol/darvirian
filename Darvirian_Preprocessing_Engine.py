@@ -268,7 +268,7 @@ start = time.time()
                         for i,doc in enumerate(plot_data) for word in set(doc)]
                         # for i,doc in enumerate(plot_data) for word in doc2]
 end = time.time()
-print(end - start) # duration 63 sec for biorxiv; duration 11314 sec (3.142 hours) for all datasets
+print(end - start) # duration 63 sec for biorxiv; duration 11,779 sec (3.1 hours) for all datasets
 
 
 ## Save pickle file
