@@ -126,19 +126,20 @@ def search(searchsentence):
     # word2idx all words
     words = [word2idx[word] for word in words]
 
-    # Subset of worddic with only search words
-    worddic_sub = {key: worddic[key] for key in words}
-
     # temp dictionaries
     enddic = {}
     idfdic = {}
     closedic = {}
 
 
+    # Subset of worddic with only search words to increase processing
+    worddic_sub = {key: worddic[key] for key in words}
+
     ## metrics fullcount_order and fullidf_order: sum of number of occurences of all words in each doc (fullcount_order) and sum of TF-IDF score (fullidf_order)
     for word in words:
         # print(word)
         for indpos in worddic_sub[word]:
+            # print(indpos)
             index = indpos[0]
             amount = len(indpos[1])
             idfscore = indpos[2]
@@ -155,6 +156,7 @@ def search(searchsentence):
 
 
     ## metric combocount_order: percentage of search words (as in dict) that appear in each doc
+    # TODO check when combocountorder > 1 (and is it a reason to give these docs more relevance)
     alloptions = {k: worddic_sub.get(k) for k in words}
     comboindex = [item[0] for worddex in alloptions.values() for item in worddex]
     combocount = Counter(comboindex) # count the time of each index
@@ -368,11 +370,7 @@ def print_ranked_papers(ranked_result, top_n=3, show_sentences=True, show_wordcl
             print('\n\nRESULT {}:'. format(index+1), 'Title not available')
         else: 
             print('\n\nRESULT {}:'. format(index+1), ranked_result.Title[index]) # Print Result from 1 and not 0
-        # print('\nII Number of search words in paper:', dict(Counter(ranked_result.Search_words.iloc[index])))
-        dict_search_words = dict(Counter(ranked_result.Search_words.iloc[index]))
-        print('\nII Number of search words in paper:')
-        for k,v in dict_search_words.items():
-            print(k, v)
+        print('\nII Number of search words in paper:', dict(Counter(ranked_result.Search_words.iloc[index])))       
         print('\nI Paper ID:', ranked_result.Paper_id[index], '(Document no: {})'. format(ranked_result.Document_no[index]))
         if pd.isnull(ranked_result.Abstract[index]):
             print('\nIII Authors:', 'Authors not available')
