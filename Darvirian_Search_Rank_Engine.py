@@ -372,7 +372,7 @@ def print_ranked_papers(ranked_result, top_n=3, show_sentences=True, show_wordcl
         dict_search_words = dict(Counter(ranked_result.Search_words.iloc[index]))
         print('\nII Number of search words in paper:')
         for k,v in dict_search_words.items():
-            print(k, v)
+            print('- {}:'.format(k), v)
         print('\nI Paper ID:', ranked_result.Paper_id[index], '(Document no: {})'. format(ranked_result.Document_no[index]))
         if pd.isnull(ranked_result.Abstract[index]):
             print('\nIII Authors:', 'Authors not available')
@@ -396,7 +396,7 @@ def print_ranked_papers(ranked_result, top_n=3, show_sentences=True, show_wordcl
             text_sentences_split = text_sentences.split()
             wordcloud = WordCloud()
             img = wordcloud.generate_from_text(' '.join(text_sentences_split))
-            img.to_file('wordcloud{}.jpeg'.format(index))
+            # img.to_file('wordcloud{}.jpeg'.format(index))
          
             # plot word cloud       
             # plt.imshow(img)
