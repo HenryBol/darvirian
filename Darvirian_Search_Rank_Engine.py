@@ -109,7 +109,7 @@ idx2word = pickle.load(pickle_in)
 # (6) [(1, 1)]) # fdic_order: doc 1 has once two search words next to each other
 # <<<
 
-searchsentence = 'Sustainable risk reduction strategies'
+# searchsentence = 'Sustainable risk reduction strategies'
 
 def search(searchsentence):
     
@@ -176,10 +176,11 @@ def search(searchsentence):
         # dictionary of documents and all positions (for docs with more than one search word in it)
         # import time
         # start = time.time()
+        y = set(y)
         closedic = {}
         for wordbig in [worddic_sub[x] for x in words]:
             for record in wordbig:
-                if record[0] in set(y):
+                if record[0] in y:
                     index = record[0]
                     positions = record[1]
                     try:
@@ -198,11 +199,40 @@ def search(searchsentence):
         #       for record in wordbig if record[0] in set(y)]
         # # end = time.time()
         # print(end - start) # duration 6
-     
+   
+    
+# TODO closedic[index] van te voren en set; set in sublist en secondlist  
         
         ## metric: fdic number of times search words appear in a doc in descending order
+        # x = 0
+        # fdic = {}
+        # import time
+        # start = time.time()
+        # for index in y: # list with docs with more than one search word
+        #     csum = []            
+        #     for seqlist in closedic[index]:
+        #         while x > 0:
+        #             secondlist = seqlist # second word positions
+        #             x = 0
+        #             # first and second word next to each other (in same order)
+        #             sol = [1 for i in firstlist if i + 1 in secondlist]
+        #             csum.append(sol)
+        #             fsum = [item for sublist in csum for item in sublist]
+        #             fsum = sum(fsum)
+        #             fdic[index] = fsum
+        #             fdic_order = sorted(fdic.items(), key=lambda x: x[1], reverse=True)
+        #         while x == 0:
+        #             firstlist = seqlist # first word positions 
+        #             # TODO
+        #             # x = x + 1 
+        #             x += 1 
+        # end = time.time()
+        # print(end - start)
+
         x = 0
         fdic = {}
+        import time
+        start = time.time()
         for index in y: # list with docs with more than one search word
             csum = []            
             for seqlist in closedic[index]:
@@ -215,10 +245,15 @@ def search(searchsentence):
                     fsum = [item for sublist in csum for item in sublist]
                     fsum = sum(fsum)
                     fdic[index] = fsum
-                    fdic_order = sorted(fdic.items(), key=lambda x: x[1], reverse=True)
                 while x == 0:
                     firstlist = seqlist # first word positions 
-                    x = x + 1 
+                    # TODO
+                    # x = x + 1 
+                    x += 1 
+        fdic_order = sorted(fdic.items(), key=lambda x: x[1], reverse=True)
+        end = time.time()
+        print(end - start)
+
 
         ## TODO add metric search words in abstract
         ## TODO another metric for if they are not next to each other but still close
@@ -405,7 +440,7 @@ def print_ranked_papers(ranked_result, top_n=3, show_sentences=True, show_wordcl
             # image.show()
             
             # %pylab inline
-            img = mpimg.imread('wordcloud{}.jpeg'.format(index))
+            # img = mpimg.imread('wordcloud{}.jpeg'.format(index))
             imgplot = plt.imshow(img)
             plt.show()
 

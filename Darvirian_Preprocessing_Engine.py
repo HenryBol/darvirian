@@ -26,9 +26,13 @@ from collections import Counter
 # from collections import OrderedDict
 from collections import defaultdict
 
+import nltk
+nltk.download('wordnet')
+
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
 from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer 
 
 #from nltk.stem.porter import PorterStemmer
 #from nltk.stem import SnowballStemmer
@@ -53,7 +57,7 @@ df = df.append(df_clean_noncomm_use).reset_index(drop=True)
 df = df.append(df_clean_pmc).reset_index(drop=True)
 
 # Select dataset (test purposes)
-# df = df_biorxiv.copy()
+df = df_biorxiv.copy()
 
 
 ## Series plot_data with text (all documents)
@@ -129,7 +133,7 @@ plot_data = [re.sub(r'\b[a-zA-Z]\b', '', str(x)) for x in plot_data]
 # PART III: Tokenize and preprocess more
 # =============================================================================
 ## Tokenize words
-plot_data = [word_tokenize(doc) for doc in plot_data]
+plot_data = [word_tokenize(doc) for doc in set(plot_data)]
 
 
 ## Lower case words for all docs
@@ -139,6 +143,20 @@ plot_data = [[word.lower() for word in doc] for doc in plot_data]
 ## Remove stop words from all docs
 stop_words = set(stopwords.words('english'))
 plot_data = [[word for word in doc if word not in stop_words] for doc in plot_data]
+
+
+## lemmatization
+lemmatizer = WordNetLemmatizer() 
+plot_data = [[lemmatizer.lemmatize(word) for word in doc] for doc in plot_data]
+
+#snowball_stemmer = SnowballStemmer("english")
+#stemmed_sentence = [snowball_stemmer.stem(w) for w in filtered_sentence]
+#stemmed_sentence[0:10]
+#
+#porter_stemmer = PorterStemmer()
+#snowball_stemmer = SnowballStemmer("english")
+#stemmed_sentence = [porter_stemmer.stem(w) for w in filtered_sentence]
+#stemmed_sentence[0:10]
 
 
 ## Remove words that occur only once in all documents
@@ -156,19 +174,13 @@ words_low_freq = set(words_low_freq)
 # plot_data = [[word for word in doc if word not in words_low_freq] for doc in plot_data]
 plot_data = [[word for word in doc if word not in words_low_freq] for doc in plot_data]
 
-## TODO Stemming or lemmatization
-#snowball_stemmer = SnowballStemmer("english")
-#stemmed_sentence = [snowball_stemmer.stem(w) for w in filtered_sentence]
-#stemmed_sentence[0:10]
-#
-#porter_stemmer = PorterStemmer()
-#snowball_stemmer = SnowballStemmer("english")
-#stemmed_sentence = [porter_stemmer.stem(w) for w in filtered_sentence]
-#stemmed_sentence[0:10]
-
+# all_words = [item for sublist in plot_data for item in sublist]
+# wordsunique = set(all_words)
+# wordsunique = list(wordsunique)
+# len(wordsunique)
 
 ## Save plot_data file
-f = open("Data/output/plot_data_200415-2.pkl", "wb")
+f = open("Data/output/plot_data_200417-2.pkl", "wb")
 pickle.dump(plot_data, f)
 f.close()
 
@@ -195,7 +207,7 @@ dense = vectors.todense()
 word2idx = dict(zip(feature_names, range(len(feature_names))))
 
 # Save word2idx file
-f = open("Data/output/word2idx_200415-2.pkl", "wb")
+f = open("Data/output/word2idx_200417-2.pkl", "wb")
 pickle.dump(word2idx, f)
 f.close()
 
@@ -203,7 +215,7 @@ f.close()
 idx2word = {v:k for k,v in word2idx.items()}
 
 ## Save idx2word file
-f = open("Data/output/idx2word_200415-2.pkl", "wb")
+f = open("Data/output/idx2word_200417-2.pkl", "wb")
 pickle.dump(idx2word, f)
 f.close()
 
@@ -226,7 +238,7 @@ df_tfidf = pd.DataFrame(dense, columns=features_names_num)
 plot_data = [[word2idx.get(word) for word in line] for line in plot_data]
 
 # Save plot_data_num file
-f = open("Data/output/plot_data_200415_num-2.pkl", "wb")
+f = open("Data/output/plot_data_200417-2.pkl", "wb")
 pickle.dump(plot_data, f)
 f.close()
 
@@ -250,8 +262,6 @@ worddic = defaultdict(list)
 # for i,doc in enumerate(plot_data):
 #     for doc in plot_data:
 #         for word in set(doc): # set provides unique words in doc
-#             print(word)
-#             # word = str(word)
 #             index = plot_data.index(doc)
 #             positions = [index for index, w in enumerate(doc) if w == word]
 #             idfs = df_tfidf.loc[i, word]
@@ -269,6 +279,17 @@ start = time.time()
                         # for i,doc in enumerate(plot_data) for word in doc2]
 end = time.time()
 print(end - start) # duration 63 sec for biorxiv; duration 11,779 sec (3.1 hours) for all datasets
+
+
+# import time
+# start = time.time()
+# worddic = [worddic[word].append([plot_data.index(doc), 
+#                         [index for index, w in enumerate(doc) if w == word], 
+#                         df_tfidf.loc[i, word]]) 
+#                         for i,doc in enumerate(plot_data) for word in set(doc)]
+#                         # for i,doc in enumerate(plot_data) for word in doc2]
+# end = time.time()
+# print(end - start) # duration 63 sec for biorxiv; duration 11,779 sec (3.1 hours) for all datasets
 
 
 ## Save pickle file
