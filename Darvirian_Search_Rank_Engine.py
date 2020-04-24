@@ -14,76 +14,49 @@
 # Credits:
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
 
+# TODO
+# doc 1534 has double sentences
+# check = sentences[1534]
+# check = ''.join(item for item in check)
+
 # =============================================================================
 # Import the libraries
 # =============================================================================
 from collections import Counter
+from collections import defaultdict
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer 
+from wordcloud import WordCloud
+
 import re
 import pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-from wordcloud import WordCloud
-# from PIL import Image
 
 
 # =============================================================================
 # PART I: Load the data
 # =============================================================================
-## Read docs from CORD-19
-# import os
-# os.chdir("../Data/CSV")
-# df_biorxiv = pd.read_csv('Data/CSV/biorxiv_clean.csv')
-# df_clean_comm_use = pd.read_csv('Data/CSV/clean_comm_use.csv')
-# df_clean_noncomm_use = pd.read_csv('Data/CSV/clean_noncomm_use.csv')
-# df_clean_pmc = pd.read_csv('Data/CSV/clean_pmc.csv')
-
-# # Add all dataframes togethers
-# df = df_biorxiv.append(df_clean_comm_use).reset_index(drop=True)
-# df = df.append(df_clean_noncomm_use).reset_index(drop=True)
-# df = df.append(df_clean_pmc).reset_index(drop=True)
-
-# df.columns
-
 # Load small version of df with papers
 pickle_in = open('Data/output/df.pkl', 'rb')
 df = pickle.load(pickle_in)
 
 # Load pickle file sentences
-pickle_in = open('Data/output/sentences_200415.pkl', 'rb')
+pickle_in = open('Data/output/sentences_200423-2.pkl', 'rb')
 sentences = pickle.load(pickle_in)
 
-# Load pickle file plot_data
-# pickle_in = open('Data/output/plot_data_200407.pkl', 'rb')
-# plot_data = pickle.load(pickle_in)
-
-# Load pickle file worddic (word version)
-# pickle_in = open('Data/output/worddic_all_200410.pkl', 'rb')
-# worddic = pickle.load(pickle_in)
-
-# Load pickle file worddic (numeric version)
-# all words besides single characters:
-# pickle_in = open('Data/output/worddic_all_200415_num.pkl', 'rb') 
-# worddic = pickle.load(pickle_in)
-# all words besides single characters and words that occur only once in all docs
-pickle_in = open('Data/output/worddic_all_200415_num-2.pkl', 'rb')
+# Load pickle file worddic
+pickle_in = open('Data/output/worddic_all_200423-2.pkl', 'rb')
 worddic = pickle.load(pickle_in)
 
 # Load pickle file word2idx
-pickle_in = open('Data/output/word2idx_200415-2.pkl', 'rb')
+pickle_in = open('Data/output/word2idx_200423-2.pkl', 'rb')
 word2idx = pickle.load(pickle_in)
 
 # Load pickle file idx2word
-pickle_in = open('Data/output/idx2word_200415-2.pkl', 'rb')
+pickle_in = open('Data/output/idx2word_200423-2.pkl', 'rb')
 idx2word = pickle.load(pickle_in)
-
-
-# ## Split dictionary into keys and values
-# keys = worddic.keys()
-# values = worddic.values()
-# items = worddic.items()
-# worddic_list = list(worddic.items())
 
 
 # =============================================================================
@@ -109,17 +82,34 @@ idx2word = pickle.load(pickle_in)
 # (6) [(1, 1)]) # fdic_order: doc 1 has once two search words next to each other
 # <<<
 
-# searchsentence = 'Sustainable risk reduction strategies'
-
-def search(searchsentence):
-    
+def search(searchsentence, must_have_word=None):
     # split sentence into individual words
     searchsentence = searchsentence.lower()
-    # split sentence in words and keep characters as in worddic
-    words = searchsentence.split(' ')
+    # split sentence in words
+    words = word_tokenize(searchsentence)
+    # remove duplicates in search words
+    words = list(set(words))
+
+    # lemmatize search words and must_have_word
+    lemmatizer = WordNetLemmatizer()
+    words = [lemmatizer.lemmatize(word) for word in words]
+    if must_have_word != None:
+        must_have_word = lemmatizer.lemmatize(must_have_word)
+
+    # add must_have_word (first position) to search words 
+    # if not yet in search words and if in dictionary:
+    if must_have_word != None and (must_have_word not in words)\
+            and (must_have_word in word2idx):     
+            words.insert(0, must_have_word)
+
+    # keep characters as in worddic
     words = [re.sub(r'[^a-zA-Z]', ' ', str(w)) for w in words]
     
-    # remove words if not in worddic (keep only the words that are in the dictionary)
+    # lemmatize search words
+    words = [lemmatizer.lemmatize(word) for word in words]
+    
+    # remove words if not in worddic 
+    # keep only the words that are in the dictionary
     words = [word for word in words if word in word2idx.keys()]
     numwords = len(words)
     
@@ -128,17 +118,23 @@ def search(searchsentence):
 
     # Subset of worddic with only search words
     worddic_sub = {key: worddic[key] for key in words}
-
+    
+    # Subset of worddic with only search words
+    worddic_sub = {key: worddic[key] for key in words}
+    
     # temp dictionaries
     enddic = {}
     idfdic = {}
     closedic = {}
 
 
-    ## metrics fullcount_order and fullidf_order: sum of number of occurences of all words in each doc (fullcount_order) and sum of TF-IDF score (fullidf_order)
+    ## metrics fullcount_order and fullidf_order: 
+    # sum of number of occurences of all words in each doc (fullcount_order) 
+    # and sum of TF-IDF score (fullidf_order)
     for word in words:
         # print(word)
-        for indpos in worddic_sub[word]:
+        for indpos in worddic[word]:
+            # print(indpos)
             index = indpos[0]
             amount = len(indpos[1])
             idfscore = indpos[2]
@@ -154,31 +150,45 @@ def search(searchsentence):
     fullidf_order = sorted(idfdic.items(), key=lambda x: x[1], reverse=True)
 
 
-    ## metric combocount_order: percentage of search words (as in dict) that appear in each doc
-    alloptions = {k: worddic_sub.get(k) for k in words}
-    comboindex = [item[0] for worddex in alloptions.values() for item in worddex]
-    combocount = Counter(comboindex) # count the time of each index
+    ## metric combocount_order: 
+    # percentage of search words (as in dict) that appear in each doc
+    words_docs = defaultdict(list)
+    # get for each word the docs which it is in
+    for k in worddic_sub.keys():
+        for i in range(len(worddic_sub[k])):
+            words_docs[k].append(worddic_sub[k][i][0])
+    # keep onlt the unique docs per word      
+    for k in words_docs:
+        words_docs[k] = set(words_docs[k])
+    # combination of all docs
+    comboindex = []
+    for k in words_docs:
+        comboindex += words_docs[k]
+    # count the number of each doc (from 0 to max number of search words)
+    combocount = Counter(comboindex) 
+    # divide by number of search words (to get in range from [0,1])
     for key in combocount:
         combocount[key] = combocount[key] / numwords
+    # sort from highest to lowest
     combocount_order = sorted(combocount.items(), key=lambda x: x[1], reverse=True)
 
 
-    ## metric closedic: if words appear in same order as in search
-    fdic_order = 0 # initialization in case of a single search word
+    ## metric closedic: 
+    # check on words appearing in same order as in search
+    fdic_order = 0 # initialization (in case of a single search word)
     if len(words) > 1:
         # list with docs with a search word        
-        x = [index[0] for record in [worddic_sub[z] for z in words] for index in record]
+        x = [index[0] for record in [worddic[z] for z in words] for index in record]
         # list with docs with more than one search word
         # y = sorted(list(set([i for i in x if x.count(i) > 1])))
         counts = np.bincount(x)
         y = list(np.where([counts>1])[1])
 
-        # dictionary of documents and all positions (for docs with more than one search word in it)
-        # import time
-        # start = time.time()
-        y = set(y)
+        # dictionary of documents and all positions 
+        # (for docs with more than one search word in it)
         closedic = {}
-        for wordbig in [worddic_sub[x] for x in words]:
+        y = set(y) # speed up processing
+        for wordbig in [worddic[x] for x in words]:
             for record in wordbig:
                 if record[0] in y:
                     index = record[0]
@@ -188,52 +198,13 @@ def search(searchsentence):
                     except:
                         closedic[index] = []
                         closedic[index].append(positions)
-        # end = time.time()
-        # print(end - start) # duration 6
     
-        # start = time.time()
-        # closedic2 = defaultdict(list)
-        # [closedic2[record[0]].append(record[1]) 
-        #       for wordbig in [worddic_sub[x] 
-        #       for x in words] 
-        #       for record in wordbig if record[0] in set(y)]
-        # # end = time.time()
-        # print(end - start) # duration 6
-   
-    
-# TODO closedic[index] van te voren en set; set in sublist en secondlist  
-        
-        ## metric: fdic number of times search words appear in a doc in descending order
-        # x = 0
-        # fdic = {}
-        # import time
-        # start = time.time()
-        # for index in y: # list with docs with more than one search word
-        #     csum = []            
-        #     for seqlist in closedic[index]:
-        #         while x > 0:
-        #             secondlist = seqlist # second word positions
-        #             x = 0
-        #             # first and second word next to each other (in same order)
-        #             sol = [1 for i in firstlist if i + 1 in secondlist]
-        #             csum.append(sol)
-        #             fsum = [item for sublist in csum for item in sublist]
-        #             fsum = sum(fsum)
-        #             fdic[index] = fsum
-        #             fdic_order = sorted(fdic.items(), key=lambda x: x[1], reverse=True)
-        #         while x == 0:
-        #             firstlist = seqlist # first word positions 
-        #             # TODO
-        #             # x = x + 1 
-        #             x += 1 
-        # end = time.time()
-        # print(end - start)
-
-        x = 0
+        ## metric fdic: 
+        # number of times search words appear in a doc in descending order
         fdic = {}
-        import time
-        start = time.time()
+        # fdic_order = []
         for index in y: # list with docs with more than one search word
+            x = 0 
             csum = []            
             for seqlist in closedic[index]:
                 while x > 0:
@@ -242,47 +213,64 @@ def search(searchsentence):
                     # first and second word next to each other (in same order)
                     sol = [1 for i in firstlist if i + 1 in secondlist]
                     csum.append(sol)
-                    fsum = [item for sublist in csum for item in sublist]
-                    fsum = sum(fsum)
+                    fsum = [item for sublist in csum for item in sublist] 
+                    fsum = sum(fsum) 
                     fdic[index] = fsum
+
                 while x == 0:
                     firstlist = seqlist # first word positions 
-                    # TODO
-                    # x = x + 1 
                     x += 1 
         fdic_order = sorted(fdic.items(), key=lambda x: x[1], reverse=True)
-        end = time.time()
-        print(end - start)
-
-
-        ## TODO add metric search words in abstract
-        ## TODO another metric for if they are not next to each other but still close
+    
+    ## keep only docs that contains all must_search_words
+    if must_have_word != None and numwords > 1:
+        # check if word is in dictionary
+        if must_have_word.lower() not in word2idx:
+            print("\nMust-have-word not found in dictionary")
+        else:
+            # lower case must_have_word
+            must_have_word = word2idx[must_have_word.lower()] 
+            # get list of all docs with a must have word 
+            must_have_docs = set([doc[0] for doc in worddic_sub[must_have_word]])
+            # update the score metrics containing only docs with the must have search word
+            fullcount_order = [list_of_list for list_of_list in fullcount_order\
+                               if list_of_list[0] in must_have_docs]
+            combocount_order = [list_of_list for list_of_list in combocount_order\
+                                if list_of_list[0] in must_have_docs]    
+            fullidf_order = [list_of_list for list_of_list in fullidf_order\
+                             if list_of_list[0] in must_have_docs]
+            fdic_order = [list_of_list for list_of_list in fdic_order\
+                          if list_of_list[0] in must_have_docs]
     
     
-    ## idx2word all words
+    ## idx2word all words (transform words again in characters instead of numbers)
     words = [idx2word[word] for word in words]
 
-    return(searchsentence, words, fullcount_order, combocount_order, fullidf_order, fdic_order)
+    return (searchsentence, words, fullcount_order, combocount_order, fullidf_order, fdic_order)
 
-
-term = 'Sustainable risk reduction strategies'
 
 # =============================================================================
 # PART III: Rank and return (rule based)
 # =============================================================================
 # Create a rule based rank and return function
 
-def rank(term):
+def rank(term, must_have_word=None):
 
     # get results from search
-    results = search(term)
+    results = search(term, must_have_word)
     # get metrics
-    search_words = results[1] # search words found in dictionary
-    num_search_words = len(results[1]) # number of search words found in dictionary
-    num_score = results[2] # number of search words (as in dict) in each doc (in descending order)
-    per_score = results[3] # percentage of search words (as in dict) in each doc (in descending order)
-    tfscore = results[4] # sum of tfidf of search words in each doc (in ascending order)
-    order_score = results[5] # fidc order
+    # search words found in dictionary:
+    search_words = results[1] 
+    # number of search words found in dictionary:
+    num_search_words = len(results[1]) 
+    # number of search words (as in dict) in each doc (in descending order):
+    num_score = results[2] 
+    # percentage of search words (as in dict) in each doc (in descending order):
+    per_score = results[3]
+    # sum of tfidf of search words in each doc (in ascending order):
+    tfscore = results[4] 
+    # fidc order:
+    order_score = results[5] 
 
     # list of documents in order of relevance
     final_candidates = []
@@ -292,181 +280,220 @@ def rank(term):
     if num_search_words == 0:
         print('Search term(s) not found')
 
+
     ## single term searched (as in dict): return the following 5 scores
     if num_search_words == 1:
-        num_score_list = [l[0] for l in num_score] # document numbers
-        num_score_list = num_score_list[:3] # take max 3 documents from num_score
-        num_score_list.append(per_score[0][0]) # add the best percentage score
-        num_score_list.append(tfscore[0][0]) # add the best tf score
-        final_candidates = list(set(num_score_list)) # remove duplicate document numbers
+        # document numbers:
+        num_score_list = [l[0] for l in num_score] 
+        # take max 3 documents from num_score:
+        num_score_list = num_score_list[:3] 
+        # add the best percentage score:
+        num_score_list.append(per_score[0][0]) 
+        # add the best tfidf score
+        num_score_list.append(tfscore[0][0]) 
+        # remove duplicate document numbers
+        final_candidates = list(set(num_score_list)) 
 
 
     ## more than one search word (and found in dictionary)
+    # ranking is based on an intelligent commbination of the scores
     if num_search_words > 1:
 
-        # rule1: doc with high fidc order_score (>1) & 100% percentage search words (as in dict) on no. 1 position
-        first_candidates = []
-
-        # first candidate(s) comes from fidc order_score (with value > 1)
-        for candidates in order_score:
-            if candidates[1] >= 1:
-                first_candidates.append(candidates[0])
-
-        second_candidates = []
-
-        for match_candidates in per_score:
-            # if all words are in a document: add to second_candidates
-            # TODO check why per_score sometimes > 1 (change to >=1 ?)
-            if match_candidates[1] == 1:
-                second_candidates.append(match_candidates[0])
-        # first final candidates have the highest score of search words next to each other and all search words (as in dict) in document  
-        for match_candidates in first_candidates:
-            if match_candidates in second_candidates:
-                final_candidates.append(match_candidates)
-                
-        # rule 1a: add first document with 100% match of search_words
-        # TODO check other scores highest ranking
-        if per_score[0][1] == 1: # percentage score of first document number with 100% score
-            final_candidates.append(per_score[0][0]) # document number
-
-        # rule2: add max 4 other words with order_score greater than 1 (if not yet in final_candidates)
-        t3_order = first_candidates[0:3]
-        for each in t3_order:
-            if each not in final_candidates:
-                final_candidates.insert(len(final_candidates), each)
-
-        # rule3: add 2 top td-idf results to final_candidates
-        final_candidates.insert(len(final_candidates), tfscore[0][0])
-        final_candidates.insert(len(final_candidates), tfscore[1][0])
-
-        # rule4: next add four other high percentage score (if not yet in final_candiates)
-        t3_per = second_candidates[0:3] # the first 4 high percentages scores (if equal to 100% of search words in doc)
-        for each in t3_per:
-            if each not in final_candidates:
-                final_candidates.insert(len(final_candidates), each)
-
-        # rule5: next add any other no. 1 result in num_score, per_score, tfscore and order_score (if not yet in final_candidates)
-        othertops = [num_score[0][0], per_score[0][0], tfscore[0][0], order_score[0][0]]
-        for top in othertops:
-            if top not in final_candidates:
-                final_candidates.insert(len(final_candidates), top)
-
+        ## set up a dataframe with scores of size all documents (initalized with 0)
+        total_number_of_docs = len(df)
+        doc_score_columns = ['num_score', 'per_score', 'tf_score', 'order_score']
+        doc_score = pd.DataFrame(0, index=np.arange(total_number_of_docs), columns=doc_score_columns)
+        
+        # plot a score in a daraframe (index is doc number)
+        def doc_plot(type_score):
+            score_doc = [0]*total_number_of_docs
+            for i in range(len(type_score)):
+                x = type_score[i][0] # document number
+                score_doc[x] = float(type_score[i][1]) # score
+            return score_doc
+        
+        # Fill-in for each doc the score
+        doc_score.num_score = doc_plot(num_score)
+        doc_score.per_score = doc_plot(per_score)
+        doc_score.tf_score = doc_plot(tfscore)
+        doc_score.order_score = doc_plot(order_score)
+        
+        # Normalize (to the sum or max)
+        normalization = sum(doc_score.num_score)
+        doc_score.num_score = [float(i)/normalization for i in doc_score.num_score]
+        
+        # keep per_score (percentage of search words in document) as it is (between 0 and 1)
+        
+        normalization = max(doc_score.tf_score)        
+        doc_score.tf_score = [float(i)/normalization for i in doc_score.tf_score]
+        
+        normalization = max(doc_score.order_score)   
+        doc_score.order_score = [float(i)/normalization for i in doc_score.order_score]
+        
+        # sum all scores to get a Grand Score
+        doc_score['sum'] = (doc_score.num_score +\
+                            doc_score.per_score +\
+                            doc_score.tf_score +\
+                            doc_score.order_score)
+        # keep only the values with a sum > 0
+        doc_score = doc_score[doc_score['sum'] > 0]
+        
+        # get the docs (i.e index) sorted from high to low ranking
+        final_candidates = list(doc_score.sort_values('sum', ascending=False).index)
+    
+        # keep top 10 candidates
+        final_candidates = final_candidates[:10]        
 
     # print final candidates
     print('\nFound search words:', results[1])
-    # print('Ranked papers (document numbers):', final_candidates)
 
-    # top results: sentences with search words, paper ID (and documet number), authors and abstract
-    df_results = pd.DataFrame(columns=['Title', 'Paper_id', 'Document_no', 'Authors', 'Abstract', 'Sentences', 'Search_words'])
+    # top results: sentences with search words, paper ID (and document number), authors and abstract
+    df_results = pd.DataFrame(columns=\
+              ['Title', 'Paper_id', 'Document_no', 'Authors', 'Abstract', 'Sentences', 'Search_words'])
     for index, results in enumerate(final_candidates):
-        # if index < 5:
         df_results.loc[index, 'Title'] = df.title[results]
         df_results.loc[index, 'Paper_id'] = df.paper_id[results]
         df_results.loc[index, 'Document_no'] = results
         df_results.loc[index, 'Authors'] = df.authors[results]
         df_results.loc[index, 'Abstract'] = df.abstract[results]
-        search_results = search_sentence(results, ' '.join(search_words))
-        df_results.loc[index, 'Sentences'] = search_results
 
-        # All search words per document 
-        df_results.loc[index, 'Search_words'] = [word for word in search_words for sub_list in search_results if word in sub_list]
-
+        # get sentences with search words and all search words in the specific document
+        sentence_index, search_words_found = search_sentence(results, search_words)
+        # all sentences with search words
+        df_results.loc[index, 'Sentences'] = sentence_index
+        # all search words (also multiple instances) 
+        df_results.loc[index, 'Search_words'] = search_words_found
+          
     return final_candidates, df_results
 
 
 # =============================================================================
 # PART IV: Function search sentence
 # =============================================================================
-# TODO rewrite without break
-def search_sentence(doc_number, searchsentence):
-    searchsentence = searchsentence.lower()
-    search_words = searchsentence.split(' ')
-    sentence_index = []
+
+def search_sentence(doc_number, search_words):
+    sentence_index = [] # all sentences with search words 
+    search_words_found = [] # all found search words
+    
     for sentence in sentences[doc_number]:
-        # if any(search_word in search_words for search_word in sentence.lower()):
+        # keep characters as in worddic, lowercase, split in words and lemmatize
+        sentence_temp = re.sub(r'[^a-zA-Z]', ' ', sentence)
+        sentence_temp = sentence_temp.lower() # lowercase
+        sentence_temp = sentence_temp.split() # split in different words
+        
+        # all sentences with search words
         for search_word in search_words:
-            if search_word in sentence.lower():
+            if search_word in sentence_temp:
                 sentence_index.append(sentence)
                 break
-    return sentence_index
+        # all search words (also multiple instances)
+        for search_word in search_words:
+            if search_word in sentence_temp:
+                search_words_found.append(search_word)
+        # [search_words_found.append(search_word) for search_word in search_words if search_word in sentence_temp]
             
+    return sentence_index, search_words_found 
+
 
 # =============================================================================
 # PART V: Function print result (ranked papers)
 # =============================================================================
-def print_ranked_papers(ranked_result, top_n=3, show_sentences=True, show_wordcloud=True):
+## Highlight in a text specific words in a specific color
+# return this text with the highlighted words
+def highlight_words(text, words, color):
+    
+    # color set
+    color_set = {'red': '\033[31m', 'green': '\033[32m','blue': '\033[34m','reset': '\033[39m'}
 
-    # Print top n result
-   for index in range(top_n):    
+    lemmatizer = WordNetLemmatizer() 
+    
+    # wrap words in color
+    for word in words:
+        # text_lower = text.lower() # lowercase words
+        text_temp = [re.sub(r'[^a-zA-Z]', '', word) for word in text]
+        # lemmatize
+        text_temp = [lemmatizer.lemmatize(word) for word in text_temp] 
+        # idxs = [i for i, x in enumerate(text) if x.lower() == word]
+        idxs = [i for i, x in enumerate(text_temp) if x.lower() == word]
+        for i in idxs:
+            text[i] = color_set[color] + text[i] + color_set['reset']
+            
+    # join the list back into a string and print
+    text_highlighted = ' '.join(text)
+    return(text_highlighted)
+         
+
+## Main function of printing the papers in ranked order
+# Select per document: 
+# - top_n: number of top n papers to be displayed
+# - show_sentences: display the sentences which contains search words
+# - show_wordcloud: dsiplay a cloud word of these sentences
+def print_ranked_papers(ranked_result, top_n=3, show_abstract=True, show_sentences=True):
+
+    # Print top n result (with max number of documents from ranked_result)
+    for index in range(min(top_n, len(ranked_result))):    
        
+        ## Preparation
+        # join all sentences and seperate by a return
+        text_sentences = '\n'.join(ranked_result.Sentences[index])
+        # spit in seperate words 
+        text_sentences_split = text_sentences.split()
+        # list of search words
+        search_words = list(set(ranked_result.Search_words[index]))
+
+        
+        ## Print most important items per document (paper)
+        # and in case of 'nan' write 'not available'
+        
+        # ranking number and title
         if pd.isnull(ranked_result.Title[index]):
             print('\n\nRESULT {}:'. format(index+1), 'Title not available')
         else: 
-            print('\n\nRESULT {}:'. format(index+1), ranked_result.Title[index]) # Print Result from 1 and not 0
-        # print('\nII Number of search words in paper:', dict(Counter(ranked_result.Search_words.iloc[index])))
-        dict_search_words = dict(Counter(ranked_result.Search_words.iloc[index]))
-        print('\nII Number of search words in paper:')
+                # Print Result from 1 and not 0
+                print('\n\nRESULT {}:'. format(index+1), ranked_result.Title[index]) 
+    
+        # generate cloud word
+        wordcloud = WordCloud()
+        img = wordcloud.generate_from_text(' '.join(text_sentences_split))
+        plt.imshow(img)
+        plt.axis('off')
+        plt.show()   
+       
+        # count all search word in document and present them from highest to lowest  
+        dict_search_words =\
+            dict(Counter(ranked_result.Search_words.iloc[index]).most_common())
+        print('\nI Number of search words in paper:')
         for k,v in dict_search_words.items():
             print('- {}:'.format(k), v)
-        print('\nI Paper ID:', ranked_result.Paper_id[index], '(Document no: {})'. format(ranked_result.Document_no[index]))
+            
+        # paper id and document number
+        print('\nII Paper ID:', ranked_result.Paper_id[index], 
+              '(Document no.: {})'. format(ranked_result.Document_no[index]))
+        
+        # authors
         if pd.isnull(ranked_result.Abstract[index]):
             print('\nIII Authors:', 'Authors not available')
         else:
             print('\nIII Authors:', ranked_result.Authors[index])
         print('\n')
-        if pd.isnull(ranked_result.Abstract[index]):
-            print('Abstract not available')
-        else: 
-            print(ranked_result.Abstract[index])
-            
-        # join all sentences and seperate by a return
-        text_sentences = '\n'.join(ranked_result.Sentences[index])
-        # Spit in seperate words 
-        text_sentences_split = text_sentences.split()
-
-        search_words = list(set(ranked_result.Search_words[index]))
-
-        # Generate cloud word
-        if show_wordcloud == True:
-            text_sentences_split = text_sentences.split()
-            wordcloud = WordCloud()
-            img = wordcloud.generate_from_text(' '.join(text_sentences_split))
-            # img.to_file('wordcloud{}.jpeg'.format(index))
-         
-            # plot word cloud       
-            # plt.imshow(img)
-            # plt.close()
-            # image = Image.open('wordcloud.jpeg')
-            # image.show()
-            
-            # %pylab inline
-            # img = mpimg.imread('wordcloud{}.jpeg'.format(index))
-            imgplot = plt.imshow(img)
-            plt.show()
-
-        # Show sentences with search words in color
+        
+        # abstract
+        if show_abstract == True:
+            if pd.isnull(ranked_result.Abstract[index]):
+                print('Abstract not available')
+            else: 
+                # split abstract in seperate words
+                abstract_sentences_split = ranked_result.Abstract[index].split()
+                # highlight the search words in red
+                print(highlight_words(abstract_sentences_split, search_words, 'red'))
+              
+        ## show sentences with search words in green
         if show_sentences == True:
+            print('\nIV Sentences in paper containing search words:\n')
+            print(highlight_words(text_sentences_split, search_words,'green'))
 
-            ## highlight search words
-            # Set color
-            # red = "\033[31m"
-            green = "\033[32m"
-            # blue = "\033[34m"
-            reset = "\033[39m"
-     
-            # wrap search words in color
-            for word in search_words:
-                idxs = [i for i, x in enumerate(text_sentences_split) if x == word]
-                for i in idxs:
-                    text_sentences_split[i] = green + text_sentences_split[i] + reset
-            # join the list back into a string and print
-            text_sentences_colored = ' '.join(text_sentences_split)
 
-            print('IV Sentences in paper containing search words:\n')
-            print(text_sentences_colored)
-    
-
-# =============================================================================
+ =============================================================================
 # PART VI: Examples
 # =============================================================================
 # Search return(searchsentence,words,fullcount_order,combocount_order,fullidf_order,fdic_order)
@@ -477,6 +504,7 @@ search('Fullgenome')
 search('covid')
 search('PCR')
 search('pathogens')
+search('Nagoya')
 search('GISAID')
 search('evolutionary relationship pathogens')
 search('fatality rate')
@@ -504,34 +532,19 @@ rank('farmer')
 rank('nagoya protocol')
 
 
-# tests with df_biorxiv only0
-term = 'Full-genome phylogenetic analysis'
-rank('Full-genome phylogenetic analysis')
-search('farmer')
-search('Manhattan')
-search('duties')
-# df.text[36]
-
-worddic['PCR']
-worddic['covid']
-
-searchsentence = 'Full-genome phylogenetic'
-searchsentence = 'Full-genome phylogenetic analysis'
-searchsentence = 'duties farmer'
-
-
 # =============================================================================
 # Example
 # =============================================================================
-search_example = 'Full-genome phylogenetic analysis'
-
-papers, rank_result = rank(search_example)
+# Fill in your search sentence; e.g.: 'Fullgenome phylogenetic analysis'
+must_have_word = 'genome'
+search_example = 'Fullgenome phylogenetic analysis'
+papers, rank_result = rank(search_example, must_have_word)
 
 # Print final candidates
-print('Ranked papers (document numbers):', papers)
+print('Top 10 papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+print_ranked_papers(rank_result, top_n=1, show_abstract=True, show_sentences=True)
 
 
 # =============================================================================
@@ -543,19 +556,21 @@ papers, rank_result = rank('Real-time tracking of whole genomes and a mechanism 
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
 
 
 # =============================================================================
 # CASE 2: Access to geographic and temporal diverse sample sets
 # =============================================================================
-papers, rank_result = rank('Access to geographic and temporal diverse sample sets to understand geographic distribution and genomic differences, and determine whether there is more than one strain in circulation. Multi-lateral agreements such as the Nagoya Protocol could be leveraged.')
+must_have_word = 'Nagoya'
+papers, rank_result = rank('Access to geographic and temporal diverse sample sets to understand geographic distribution and genomic differences, and determine whether there is more than one strain in circulation. Multi-lateral agreements such as the Nagoya Protocol could be leveraged.', must_have_word)
+
 
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+print_ranked_papers(rank_result, top_n=20, show_abstract=False, show_sentences=False)
 
 
 # =============================================================================
@@ -567,19 +582,21 @@ papers, rank_result = rank('Evidence that livestock could be infected (e.g., fie
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
 
 
 # =============================================================================
 # CASE 4: Animal host(s) and any evidence of continued spill-over to humans
 # =============================================================================
-papers, rank_result = rank('Animal host(s) and any evidence of continued spill-over to humans')
+# TODO check result 1 zonder animal
+must_have_word = 'covid'
+papers, rank_result = rank('Animal host(s) and any evidence of continued spill-over to humans', must_have_word)
 
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_sentences=True, show_wordcloud=True)
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
 
 
 # =============================================================================
@@ -591,18 +608,30 @@ papers, rank_result = rank('Socioeconomic and behavioral risk factors for this s
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=1, show_sentences=True, show_wordcloud=True)
+print_ranked_papers(rank_result, top_n=3, show_abstract=False, show_sentences=False)
 
 
 # =============================================================================
 # CASE 6: Sustainable risk reduction strategies
-# =============================================================================
+# ================================================================= ============
 papers, rank_result = rank('Sustainable risk reduction strategies')
 
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_sentences=False, show_wordcloud=True)
+print_ranked_papers(rank_result, top_n=3, show_abstract=False, show_sentences=False)
 
+
+# =============================================================================
+# CASE 3c (first subquestion): Evidence of whether farmers are infected, and whether farmers could have played a role in the origin.
+# =============================================================================
+must_have_word = 'farmer'
+papers, rank_result = rank('Evidence of whether farmers are infected, and whether farmers could have played a role in the origin.', must_have_word)
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=2, show_abstract=True, show_sentences=False)
 

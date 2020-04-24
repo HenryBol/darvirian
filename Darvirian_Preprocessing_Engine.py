@@ -19,6 +19,7 @@
 # =============================================================================
 import re
 import pickle
+import time
 import pandas as pd
 # import numpy as np
 
@@ -27,7 +28,7 @@ from collections import Counter
 from collections import defaultdict
 
 import nltk
-nltk.download('wordnet')
+# nltk.download('wordnet')
 
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import sent_tokenize
@@ -38,6 +39,8 @@ from nltk.stem import WordNetLemmatizer
 #from nltk.stem import SnowballStemmer
 
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+# TODO also full-genome (fullgenome is in but full-genome not)
 
 
 # =============================================================================
@@ -57,7 +60,7 @@ df = df.append(df_clean_noncomm_use).reset_index(drop=True)
 df = df.append(df_clean_pmc).reset_index(drop=True)
 
 # Select dataset (test purposes)
-df = df_biorxiv.copy()
+# df = df_biorxiv.copy()
 
 
 ## Series plot_data with text (all documents)
@@ -94,12 +97,12 @@ plot_data = df['text']
 duplicate_papers = df[df.paper_id.duplicated()] # None
 
 
-## ! Check without removing the '\n' Keep original sentences and tokenize
+## Create all docs with sentences tokenized 
 sentences = [sent_tokenize(plot_data[i]) for i in range(len(plot_data)) if len(plot_data[i]) != 0]
 
 
 ## Save sentences file
-f = open("Data/output/sentences_200415.pkl","wb")
+f = open("Data/output/sentences_200423-2.pkl","wb")
 pickle.dump(sentences, f)
 f.close()
 
@@ -118,12 +121,13 @@ plot_data = [x.replace('\n', ' ') for x in plot_data]
 
 
 ## Clean text
-# Keep characters only
-# plot_data = [re.sub(r'[^a-zA-Z. ]', '', str(x)) for x in plot_data]
-plot_data = [re.sub(r'[^a-zA-Z]', ' ', str(x)) for x in plot_data]
+# TODO CHANGE
+# Keep figures, letters and hyphens (hyphen gives error in worddic function)
+# plot_data = [re.sub(r'[^a-zA-Z0-9\-]', ' ', str(x)) for x in plot_data]
+plot_data = [re.sub(r'[^a-zA-Z0-9]', ' ', str(x)) for x in plot_data]
 
 # Remove single characters
-plot_data = [re.sub(r'\b[a-zA-Z]\b', '', str(x)) for x in plot_data]
+plot_data = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for x in plot_data]
 
 # Remove punctuation (!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~)
 # plot_data = ["".join(j for j in i if j not in string.punctuation) for i in plot_data]
@@ -133,21 +137,19 @@ plot_data = [re.sub(r'\b[a-zA-Z]\b', '', str(x)) for x in plot_data]
 # PART III: Tokenize and preprocess more
 # =============================================================================
 ## Tokenize words
-plot_data = [word_tokenize(doc) for doc in set(plot_data)]
-
+# plot_data = [word_tokenize(doc) for doc in set(plot_data)] # Do NOT use SET here
+plot_data = [word_tokenize(doc) for doc in plot_data]
 
 ## Lower case words for all docs
 plot_data = [[word.lower() for word in doc] for doc in plot_data]
 
 
-## Remove stop words from all docs
-stop_words = set(stopwords.words('english'))
-plot_data = [[word for word in doc if word not in stop_words] for doc in plot_data]
-
-
-## lemmatization
+## Lemmatization
+time_start = time.time()
 lemmatizer = WordNetLemmatizer() 
 plot_data = [[lemmatizer.lemmatize(word) for word in doc] for doc in plot_data]
+time_end = time.time()
+print('Lemmatization duration:', time_end - time_start) # Lemmatization duration: 334.67016315460205
 
 #snowball_stemmer = SnowballStemmer("english")
 #stemmed_sentence = [snowball_stemmer.stem(w) for w in filtered_sentence]
@@ -157,6 +159,11 @@ plot_data = [[lemmatizer.lemmatize(word) for word in doc] for doc in plot_data]
 #snowball_stemmer = SnowballStemmer("english")
 #stemmed_sentence = [porter_stemmer.stem(w) for w in filtered_sentence]
 #stemmed_sentence[0:10]
+
+
+## Remove stop words from all docs
+stop_words = set(stopwords.words('english'))
+plot_data = [[word for word in doc if word not in stop_words] for doc in plot_data]
 
 
 ## Remove words that occur only once in all documents
@@ -180,9 +187,9 @@ plot_data = [[word for word in doc if word not in words_low_freq] for doc in plo
 # len(wordsunique)
 
 ## Save plot_data file
-f = open("Data/output/plot_data_200417-2.pkl", "wb")
-pickle.dump(plot_data, f)
-f.close()
+# f = open("Data/output/plot_data_200419.pkl", "wb")
+# pickle.dump(plot_data, f)
+# f.close()
 
 ## Load pickle file plot_data
 # if inference == 'on':
@@ -207,7 +214,7 @@ dense = vectors.todense()
 word2idx = dict(zip(feature_names, range(len(feature_names))))
 
 # Save word2idx file
-f = open("Data/output/word2idx_200417-2.pkl", "wb")
+f = open("Data/output/word2idx_200423-2.pkl", "wb")
 pickle.dump(word2idx, f)
 f.close()
 
@@ -215,7 +222,7 @@ f.close()
 idx2word = {v:k for k,v in word2idx.items()}
 
 ## Save idx2word file
-f = open("Data/output/idx2word_200417-2.pkl", "wb")
+f = open("Data/output/idx2word_200423-2.pkl", "wb")
 pickle.dump(idx2word, f)
 f.close()
 
@@ -226,21 +233,20 @@ f.close()
 
 
 ## word2idx all feature_names 
-features_names_num = [word2idx[feature] for feature in feature_names]
+feature_names_num = [word2idx[feature] for feature in feature_names]
 
 
-## Calculate tfidf
-# df_tfidf = pd.DataFrame(dense, columns=feature_names)
-df_tfidf = pd.DataFrame(dense, columns=features_names_num)
+## dataframe tfidf
+df_tfidf = pd.DataFrame(dense, columns=feature_names_num)
 
 
 ## word2idx for all words in plot_data
 plot_data = [[word2idx.get(word) for word in line] for line in plot_data]
 
 # Save plot_data_num file
-f = open("Data/output/plot_data_200417-2.pkl", "wb")
-pickle.dump(plot_data, f)
-f.close()
+# f = open("Data/output/plot_data_200423-2.pkl", "wb")
+# pickle.dump(plot_data, f)
+# f.close()
 
 ## Load pickle file plot_data_num
 # if inference == 'on':
@@ -268,22 +274,8 @@ worddic = defaultdict(list)
 #             worddic[word].append([index,positions,idfs])
 
 # Create the dictionary via comprehension to speed up processing
-# Set to speed up
-# doc2 = set(doc) 
-import time
-start = time.time()
-[worddic[word].append([plot_data.index(doc), 
-                        [index for index, w in enumerate(doc) if w == word], 
-                        df_tfidf.loc[i, word]]) 
-                        for i,doc in enumerate(plot_data) for word in set(doc)]
-                        # for i,doc in enumerate(plot_data) for word in doc2]
-end = time.time()
-print(end - start) # duration 63 sec for biorxiv; duration 11,779 sec (3.1 hours) for all datasets
-
-
-# import time
 # start = time.time()
-# worddic = [worddic[word].append([plot_data.index(doc), 
+# [worddic[word].append([plot_data.index(doc), 
 #                         [index for index, w in enumerate(doc) if w == word], 
 #                         df_tfidf.loc[i, word]]) 
 #                         for i,doc in enumerate(plot_data) for word in set(doc)]
@@ -291,9 +283,29 @@ print(end - start) # duration 63 sec for biorxiv; duration 11,779 sec (3.1 hours
 # end = time.time()
 # print(end - start) # duration 63 sec for biorxiv; duration 11,779 sec (3.1 hours) for all datasets
 
+# Fast implementation (for numeric words)
+time_start = time.time()
+for i,doc in enumerate(plot_data):
+    # for word in set(doc): set has impact on orderscore
+    for word in set(doc):
+        
+        start = 0
+        word_positions = []
+        end = len(doc)
+        while start <= end:
+            try: 
+                p = doc.index(word, start, end)
+                start = p+1
+                word_positions.append(p)
+            except: 
+                break
+        worddic[word].append([i, word_positions, df_tfidf.loc[i, word]])
+time_end = time.time()
+print('Worddic duration:', time_end - time_start) # Worddic duration: 2199 seconds
+
 
 ## Save pickle file
-f = open("Data/output/worddic_all_200415_num-2.pkl","wb")
+f = open("Data/output/worddic_all_200423-2.pkl","wb")
 pickle.dump(worddic,f)
 f.close()
 
@@ -302,6 +314,5 @@ f.close()
 #     pickle_in = open("Data/output/worddic_all_200415.pkl", "rb")
 #     worddic = pickle.load(pickle_in)
 
-
-
-
+# Lemmatization duration: 352.2247190475464
+# Worddic duration: 2324.3425390720367
