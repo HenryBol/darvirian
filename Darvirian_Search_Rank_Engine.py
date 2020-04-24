@@ -661,8 +661,11 @@ print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=Fa
 # =============================================================================
 # Q1: mapping of covid literature with perspectives of tests/medication/vaccination development
 # =============================================================================
-must_have_word = None
-papers, rank_result = rank('mapping of covid literature with perspectives of tests/medication/vaccination development', must_have_word)
+must_have_word = 'Covid'
+# must_have_word = None
+# papers, rank_result = rank('mapping of covid literature with perspectives of tests/medication/vaccination development', must_have_word)
+papers, rank_result = rank('covid tests medication vaccination development', must_have_word)
+
 
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
@@ -676,14 +679,16 @@ rank_result.to_excel('EUvsVirus/output/Q1.xlsx')
 # =============================================================================
 # Q2: mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)
 # =============================================================================
-must_have_word = None
-papers, rank_result = rank('mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)', must_have_word)
+must_have_word = 'Covid'
+# papers, rank_result = rank('mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)', must_have_word)
+papers, rank_result = rank('mapping of existing approaches (meta-narratives, support via vaccine, via prevention, via alternative medicines, etc.)', must_have_word)
+
 
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=False)
+print_ranked_papers(rank_result, top_n=1, show_abstract=True, show_sentences=True)
 
 # Save results
 rank_result.to_excel('EUvsVirus/output/Q2.xlsx')
@@ -692,6 +697,7 @@ rank_result.to_excel('EUvsVirus/output/Q2.xlsx')
 # =============================================================================
 # 03: mapping of solutions (environment map)
 # =============================================================================
+# must_have_word = 'Covid' # gives a zero error (bug)
 must_have_word = None
 papers, rank_result = rank('mapping of solutions (environment map)', must_have_word)
 
@@ -705,11 +711,10 @@ print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=Fal
 rank_result.to_excel('EUvsVirus/output/Q3.xlsx')
 
 
-
 # =============================================================================
 # 04: creation of action plan to transfer learnings after crisis
 # =============================================================================
-must_have_word = None
+must_have_word = 'Covid'
 papers, rank_result = rank('creation of action plan to transfer learnings after crisis', must_have_word)
 
 # Print final candidates
