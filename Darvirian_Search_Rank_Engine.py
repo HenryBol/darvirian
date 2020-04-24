@@ -25,7 +25,8 @@
 from collections import Counter
 from collections import defaultdict
 from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer 
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords 
 from wordcloud import WordCloud
 
 import re
@@ -82,43 +83,44 @@ idx2word = pickle.load(pickle_in)
 # (6) [(1, 1)]) # fdic_order: doc 1 has once two search words next to each other
 # <<<
 
-def search(searchsentence, must_have_word=None):
+def search(searchsentence, must_have_words=None):
     # split sentence into individual words
     searchsentence = searchsentence.lower()
     # split sentence in words
     words = word_tokenize(searchsentence)
     # remove duplicates in search words
-    words = list(set(words))
+     
+    # add must_have_words to search words
+    if must_have_words != None:
+        words = must_have_words + words
 
-    # lemmatize search words and must_have_word
-    lemmatizer = WordNetLemmatizer()
-    words = [lemmatizer.lemmatize(word) for word in words]
-    if must_have_word != None: # also make must_have_word lowercase
-        must_have_word = lemmatizer.lemmatize(must_have_word.lower())
-
-    # add must_have_word (first position) to search words 
-    # if not yet in search words and if in dictionary:
-    if must_have_word != None and (must_have_word not in words)\
-            and (must_have_word in word2idx):     
-            words.insert(0, must_have_word)
-
+    # lowercase all words
+    words = [word.lower() for word in words]
+                               
     # keep characters as in worddic
     words = [re.sub(r'[^a-zA-Z]', ' ', str(w)) for w in words]
+
+    # remove stopwords
+    stop_words = set(stopwords.words('english'))
+    words = [word for word in words if word not in stop_words]
     
     # lemmatize search words
+    lemmatizer = WordNetLemmatizer()
     words = [lemmatizer.lemmatize(word) for word in words]
+ 
+    # remove duplicates
+    words = list(set(words))   
+ 
+    # keep only the words that are in the dictionary; remove words if not in word2idx 
+    [print('Word not in dictionary:', word) for word in words if word not in word2idx]
+    words = [word for word in words if word in word2idx]
     
-    # remove words if not in worddic 
-    # keep only the words that are in the dictionary
-    words = [word for word in words if word in word2idx.keys()]
+    # number of words    
     numwords = len(words)
     
     # word2idx all words
     words = [word2idx[word] for word in words]
 
-    # Subset of worddic with only search words
-    worddic_sub = {key: worddic[key] for key in words}
-    
     # Subset of worddic with only search words
     worddic_sub = {key: worddic[key] for key in words}
     
@@ -176,7 +178,7 @@ def search(searchsentence, must_have_word=None):
     ## metric closedic: 
     # check on words appearing in same order as in search
     fdic_order = 0 # initialization (in case of a single search word)
-    if len(words) > 1:
+    if numwords > 1:
         # list with docs with a search word        
         x = [index[0] for record in [worddic[z] for z in words] for index in record]
         # list with docs with more than one search word
@@ -222,25 +224,49 @@ def search(searchsentence, must_have_word=None):
                     x += 1 
         fdic_order = sorted(fdic.items(), key=lambda x: x[1], reverse=True)
     
-    ## keep only docs that contains all must_search_words
-    if must_have_word != None and numwords > 1:
-        # check if word is in dictionary
-        if must_have_word not in word2idx:
-            print("\nMust have word not found in dictionary")
+    ## keep only docs that contains all must_have_words
+    if must_have_words != None and numwords > 1:
+        
+        # lowercase all words
+        must_have_words = [word.lower() for word in must_have_words]                             
+        # keep characters as in worddic
+        must_have_words = [re.sub(r'[^a-zA-Z]', ' ', str(w)) for w in must_have_words]   
+        # lemmatize words
+        lemmatizer = WordNetLemmatizer()
+        must_have_words = [lemmatizer.lemmatize(word) for word in must_have_words]
+        # remove duplicates
+        must_have_words = list(set(must_have_words))
+        # keep only the words that are in the dictionary word2idx 
+        must_have_words = [word2idx[word] for word in must_have_words if word in word2idx]
+
+
+        # option: get list of all (unique) docs which have one of the must_have_words
+        # must_have_!docs = set([doc[0] for word in must_have_words for doc in worddic_sub[word]])
+
+        # option: get list of all (unique) docs which have all of the must_have_words
+        # create must_have_docs from all docs with a search w
+        must_have_docs = [doc[0] for word in must_have_words for doc in worddic_sub[word]]
+                
+        must_have_docs_unique = Counter(must_have_docs).most_common()
+        # check if overlapping documents exist (if note give a message) 
+        num_musthavewords = must_have_docs_unique[0][1] # first doc has highest occurences
+        if num_musthavewords == 0: 
+            print('Must have words do not have overlapping documents: search breaks')
+            return
+        
         else:
-            # lower case must_have_word
-            must_have_word = word2idx[must_have_word]
-            # get list of all docs with a must have word 
-            must_have_docs = set([doc[0] for doc in worddic_sub[must_have_word]])
-            # update the score metrics containing only docs with the must have search word
+            # create doc list with all docs which have all must_have_words 
+            must_have_docs_unique = [doc[0] for doc in must_have_docs_unique if doc[1] == num_musthavewords]      
+  
+            # update the score metrics containing only docs with the must have words
             fullcount_order = [list_of_list for list_of_list in fullcount_order\
-                               if list_of_list[0] in must_have_docs]
+                               if list_of_list[0] in must_have_docs_unique]
             combocount_order = [list_of_list for list_of_list in combocount_order\
-                                if list_of_list[0] in must_have_docs]    
+                                if list_of_list[0] in must_have_docs_unique]    
             fullidf_order = [list_of_list for list_of_list in fullidf_order\
-                             if list_of_list[0] in must_have_docs]
+                             if list_of_list[0] in must_have_docs_unique]
             fdic_order = [list_of_list for list_of_list in fdic_order\
-                          if list_of_list[0] in must_have_docs]
+                          if list_of_list[0] in must_have_docs_unique]
     
     
     ## idx2word all words (transform words again in characters instead of numbers)
@@ -319,7 +345,9 @@ def rank(term, must_have_word=None):
         doc_score.order_score = doc_plot(order_score)
         
         # Normalize (to the sum or max)
+        # TODO CHANGE from sum to max
         normalization = sum(doc_score.num_score)
+        normalization = max(doc_score.num_score)
         doc_score.num_score = [float(i)/normalization for i in doc_score.num_score]
         
         # keep per_score (percentage of search words in document) as it is (between 0 and 1)
@@ -327,8 +355,9 @@ def rank(term, must_have_word=None):
         normalization = max(doc_score.tf_score)        
         doc_score.tf_score = [float(i)/normalization for i in doc_score.tf_score]
         
-        normalization = max(doc_score.order_score)   
-        doc_score.order_score = [float(i)/normalization for i in doc_score.order_score]
+        normalization = max(doc_score.order_score)
+        if normalization != 0:
+            doc_score.order_score = [float(i)/normalization for i in doc_score.order_score]
         
         # sum all scores to get a Grand Score
         doc_score['sum'] = (doc_score.num_score +\
@@ -554,7 +583,7 @@ rank('nagoya protocol')
 # Example
 # =============================================================================
 # Fill in your search sentence; e.g.: 'Fullgenome phylogenetic analysis'
-must_have_word = 'genome'
+must_have_word = ['fullgenome']
 search_example = 'Fullgenome phylogenetic analysis'
 papers, rank_result = rank(search_example, must_have_word)
 
@@ -580,7 +609,7 @@ print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=Tru
 # =============================================================================
 # CASE 2: Access to geographic and temporal diverse sample sets
 # =============================================================================
-must_have_word = 'Nagoya'
+must_have_word = ['Nagoya']
 papers, rank_result = rank('Access to geographic and temporal diverse sample sets to understand geographic distribution and genomic differences, and determine whether there is more than one strain in circulation. Multi-lateral agreements such as the Nagoya Protocol could be leveraged.', must_have_word)
 
 
@@ -606,8 +635,7 @@ print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=Tru
 # =============================================================================
 # CASE 4: Animal host(s) and any evidence of continued spill-over to humans
 # =============================================================================
-# TODO check result 1 zonder animal
-must_have_word = 'covid'
+must_have_word = ['covid']
 papers, rank_result = rank('Animal host(s) and any evidence of continued spill-over to humans', must_have_word)
 
 # Print final candidates
@@ -644,7 +672,7 @@ print_ranked_papers(rank_result, top_n=10, show_abstract=False, show_sentences=F
 # =============================================================================
 # CASE 3c (first subquestion): Evidence of whether farmers are infected, and whether farmers could have played a role in the origin.
 # =============================================================================
-must_have_word = 'farmer'
+must_have_word = ['farmer']
 papers, rank_result = rank('Evidence of whether farmers are infected, and whether farmers could have played a role in the origin.', must_have_word)
 
 # Print final candidates
@@ -661,11 +689,10 @@ print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=Fa
 # =============================================================================
 # Q1: mapping of covid literature with perspectives of tests/medication/vaccination development
 # =============================================================================
-must_have_word = 'Covid'
-# must_have_word = None
+must_have_word = ['covid']
 # papers, rank_result = rank('mapping of covid literature with perspectives of tests/medication/vaccination development', must_have_word)
-papers, rank_result = rank('covid tests medication vaccination development', must_have_word)
-
+papers, rank_result = rank('tests medication vaccination development', must_have_word)
+ 
 
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
@@ -679,7 +706,7 @@ rank_result.to_excel('EUvsVirus/output/Q1.xlsx')
 # =============================================================================
 # Q2: mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)
 # =============================================================================
-must_have_word = 'Covid'
+must_have_word = ['Covid']
 # papers, rank_result = rank('mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)', must_have_word)
 papers, rank_result = rank('mapping of existing approaches (meta-narratives, support via vaccine, via prevention, via alternative medicines, etc.)', must_have_word)
 
@@ -714,7 +741,7 @@ rank_result.to_excel('EUvsVirus/output/Q3.xlsx')
 # =============================================================================
 # 04: creation of action plan to transfer learnings after crisis
 # =============================================================================
-must_have_word = 'Covid'
+must_have_word = ['Covid']
 papers, rank_result = rank('creation of action plan to transfer learnings after crisis', must_have_word)
 
 # Print final candidates
