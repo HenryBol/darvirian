@@ -93,8 +93,8 @@ def search(searchsentence, must_have_word=None):
     # lemmatize search words and must_have_word
     lemmatizer = WordNetLemmatizer()
     words = [lemmatizer.lemmatize(word) for word in words]
-    if must_have_word != None:
-        must_have_word = lemmatizer.lemmatize(must_have_word)
+    if must_have_word != None: # also make must_have_word lowercase
+        must_have_word = lemmatizer.lemmatize(must_have_word.lower())
 
     # add must_have_word (first position) to search words 
     # if not yet in search words and if in dictionary:
@@ -225,11 +225,11 @@ def search(searchsentence, must_have_word=None):
     ## keep only docs that contains all must_search_words
     if must_have_word != None and numwords > 1:
         # check if word is in dictionary
-        if must_have_word.lower() not in word2idx:
-            print("\nMust-have-word not found in dictionary")
+        if must_have_word not in word2idx:
+            print("\nMust have word not found in dictionary")
         else:
             # lower case must_have_word
-            must_have_word = word2idx[must_have_word.lower()] 
+            must_have_word = word2idx[must_have_word]
             # get list of all docs with a must have word 
             must_have_docs = set([doc[0] for doc in worddic_sub[must_have_word]])
             # update the score metrics containing only docs with the must have search word
@@ -374,21 +374,30 @@ def rank(term, must_have_word=None):
 def search_sentence(doc_number, search_words):
     sentence_index = [] # all sentences with search words 
     search_words_found = [] # all found search words
+    lemmatizer = WordNetLemmatizer()
     
-    for sentence in sentences[doc_number]:
-        # keep characters as in worddic, lowercase, split in words and lemmatize
-        sentence_temp = re.sub(r'[^a-zA-Z]', ' ', sentence)
-        sentence_temp = sentence_temp.lower() # lowercase
-        sentence_temp = sentence_temp.split() # split in different words
-        
-        # all sentences with search words
+    # temporarily version of document to clean
+    doc = sentences[doc_number]
+    # clean text
+    doc = [re.sub(r'[^a-zA-Z0-9]', ' ', str(x)) for x in doc]
+    # remove single characters
+    doc = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for x in doc]
+    # lower case words
+    doc = [word.lower() for word in doc]
+    # lemmatize
+    doc = [lemmatizer.lemmatize(word) for word in doc]
+    
+    for i, sentence in enumerate(doc):
+       
+        # all search words (also multiple instances)
         for search_word in search_words:
-            if search_word in sentence_temp:
-                sentence_index.append(sentence)
+            if search_word in sentence:
+                # take original sentence
+                sentence_index.append(sentences[doc_number][i])
                 break
         # all search words (also multiple instances)
         for search_word in search_words:
-            if search_word in sentence_temp:
+            if search_word in sentence:
                 search_words_found.append(search_word)
         # [search_words_found.append(search_word) for search_word in search_words if search_word in sentence_temp]
             
@@ -400,6 +409,7 @@ def search_sentence(doc_number, search_words):
 # =============================================================================
 ## Highlight in a text specific words in a specific color
 # return this text with the highlighted words
+
 def highlight_words(text, words, color):
     
     # color set
@@ -430,19 +440,27 @@ def highlight_words(text, words, color):
 # - show_wordcloud: dsiplay a cloud word of these sentences
 def print_ranked_papers(ranked_result, top_n=3, show_abstract=True, show_sentences=True):
 
-    # Print top n result (with max number of documents from ranked_result)
+    # print top n result (with max number of documents from ranked_result)
     for index in range(min(top_n, len(ranked_result))):    
        
-        ## Preparation
+        ## preparation       
+        text_sentences = ranked_result.Sentences[index]
+        text_sentences = [re.sub(r'[^a-zA-Z0-9]', ' ', str(x)) for x in text_sentences]
+        # remove single characters
+        text_sentences = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for x in text_sentences]
+        # lower case words
+        text_sentences = [word.lower() for word in text_sentences]
+        # lemmatize
+        lemmatizer = WordNetLemmatizer() 
+        text_sentences = [lemmatizer.lemmatize(word) for word in text_sentences] 
         # join all sentences and seperate by a return
-        text_sentences = '\n'.join(ranked_result.Sentences[index])
-        # spit in seperate words 
-        text_sentences_split = text_sentences.split()
+        text_sentences = '\n'.join(text_sentences)
+        # spit in seperate words
+        text_sentences_split = word_tokenize(text_sentences)
         # list of search words
         search_words = list(set(ranked_result.Search_words[index]))
 
-        
-        ## Print most important items per document (paper)
+        ## print most important items per document (paper)
         # and in case of 'nan' write 'not available'
         
         # ranking number and title
@@ -620,7 +638,7 @@ papers, rank_result = rank('Sustainable risk reduction strategies')
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=False, show_sentences=False)
+print_ranked_papers(rank_result, top_n=10, show_abstract=False, show_sentences=False)
 
 
 # =============================================================================
@@ -633,5 +651,72 @@ papers, rank_result = rank('Evidence of whether farmers are infected, and whethe
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=2, show_abstract=True, show_sentences=False)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=False)
 
+
+# *****************************************************************************
+# EUvsVirus
+# *****************************************************************************
+
+# =============================================================================
+# Q1: mapping of covid literature with perspectives of tests/medication/vaccination development
+# =============================================================================
+must_have_word = None
+papers, rank_result = rank('mapping of covid literature with perspectives of tests/medication/vaccination development', must_have_word)
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=False)
+
+# Save results
+rank_result.to_excel('EUvsVirus/output/Q1.xlsx')
+
+# =============================================================================
+# Q2: mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)
+# =============================================================================
+must_have_word = None
+papers, rank_result = rank('mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)', must_have_word)
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=False)
+
+# Save results
+rank_result.to_excel('EUvsVirus/output/Q2.xlsx')
+
+
+# =============================================================================
+# 03: mapping of solutions (environment map)
+# =============================================================================
+must_have_word = None
+papers, rank_result = rank('mapping of solutions (environment map)', must_have_word)
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=False)
+
+# Save results
+rank_result.to_excel('EUvsVirus/output/Q3.xlsx')
+
+
+
+# =============================================================================
+# 04: creation of action plan to transfer learnings after crisis
+# =============================================================================
+must_have_word = None
+papers, rank_result = rank('creation of action plan to transfer learnings after crisis', must_have_word)
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=False)
+
+# Save results
+rank_result.to_excel('EUvsVirus/output/Q4.xlsx')
