@@ -1,4 +1,3 @@
-# Kaggle challenge Covid-19
 # Team: Darvirian
 # Developer: Henry Bol
 
@@ -9,7 +8,8 @@
 # PART IV: Function search sentence
 # PART V: Function print result (ranked papers)
 # PART VI: Examples 
-# CASE 0: Sustainable risk reduction strategies
+# CASES: Kaggle CORD-19 What do we know about virus genetics, origin, and evolution?
+# CASES: EUvsVirus Health & Life, Research
 
 # Credits:
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
@@ -594,97 +594,11 @@ print('Top 10 papers (document numbers):', papers)
 print_ranked_papers(rank_result, top_n=1, show_abstract=True, show_sentences=True)
 
 
-# =============================================================================
-# CASE 1: Real-time tracking of whole genomes
-# =============================================================================
-papers, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
-
-# Print final candidates
-print('Ranked papers (document numbers):', papers)
-
-# Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
-
-
-# =============================================================================
-# CASE 2: Access to geographic and temporal diverse sample sets
-# =============================================================================
-must_have_word = ['Nagoya']
-papers, rank_result = rank('Access to geographic and temporal diverse sample sets to understand geographic distribution and genomic differences, and determine whether there is more than one strain in circulation. Multi-lateral agreements such as the Nagoya Protocol could be leveraged.', must_have_word)
-
-
-# Print final candidates
-print('Ranked papers (document numbers):', papers)
-
-# Print results
-print_ranked_papers(rank_result, top_n=20, show_abstract=False, show_sentences=False)
-
-
-# =============================================================================
-# CASE 3: Evidence that livestock could be infected 
-# =============================================================================
-papers, rank_result = rank('Evidence that livestock could be infected (e.g., field surveillance, genetic sequencing, receptor binding) and serve as a reservoir after the epidemic appears to be over.')
-
-# Print final candidates
-print('Ranked papers (document numbers):', papers)
-
-# Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
-
-
-# =============================================================================
-# CASE 4: Animal host(s) and any evidence of continued spill-over to humans
-# =============================================================================
-must_have_word = ['covid']
-papers, rank_result = rank('Animal host(s) and any evidence of continued spill-over to humans', must_have_word)
-
-# Print final candidates
-print('Ranked papers (document numbers):', papers)
-
-# Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
-
-
-# =============================================================================
-# CASE 5: Socioeconomic and behavioral risk factors for this spill-over
-# =============================================================================
-papers, rank_result = rank('Socioeconomic and behavioral risk factors for this spill-over')
-
-# Print final candidates
-print('Ranked papers (document numbers):', papers)
-
-# Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=False, show_sentences=False)
-
-
-# =============================================================================
-# CASE 6: Sustainable risk reduction strategies
-# ================================================================= ============
-papers, rank_result = rank('Sustainable risk reduction strategies')
-
-# Print final candidates
-print('Ranked papers (document numbers):', papers)
-
-# Print results
-print_ranked_papers(rank_result, top_n=10, show_abstract=False, show_sentences=False)
-
-
-# =============================================================================
-# CASE 3c (first subquestion): Evidence of whether farmers are infected, and whether farmers could have played a role in the origin.
-# =============================================================================
-must_have_word = ['farmer']
-papers, rank_result = rank('Evidence of whether farmers are infected, and whether farmers could have played a role in the origin.', must_have_word)
-
-# Print final candidates
-print('Ranked papers (document numbers):', papers)
-
-# Print results
-print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=False)
-
 
 # *****************************************************************************
 # EUvsVirus
 # *****************************************************************************
+
 
 # =============================================================================
 # Q1: mapping of covid literature with perspectives of tests/medication/vaccination development
@@ -752,3 +666,98 @@ print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=Fal
 
 # Save results
 rank_result.to_excel('EUvsVirus/output/Q4.xlsx')
+
+
+
+# *****************************************************************************
+# KaggleCORD-19
+# *****************************************************************************
+
+
+# =============================================================================
+# CASE 1: Real-time tracking of whole genomes
+# =============================================================================
+papers, rank_result = rank('Real-time tracking of whole genomes and a mechanism for coordinating the rapid dissemination of that information to inform the development of diagnostics and therapeutics and to track variations of the virus over time.')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
+
+
+# =============================================================================
+# CASE 2: Access to geographic and temporal diverse sample sets
+# =============================================================================
+must_have_word = ['Nagoya']
+papers, rank_result = rank('Access to geographic and temporal diverse sample sets to understand geographic distribution and genomic differences, and determine whether there is more than one strain in circulation. Multi-lateral agreements such as the Nagoya Protocol could be leveraged.', must_have_word)
+
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=20, show_abstract=False, show_sentences=False)
+
+
+# =============================================================================
+# CASE 3: Evidence that livestock could be infected 
+# =============================================================================
+papers, rank_result = rank('Evidence that livestock could be infected (e.g., field surveillance, genetic sequencing, receptor binding) and serve as a reservoir after the epidemic appears to be over.')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
+
+
+# =============================================================================
+# CASE 3c (first subquestion): Evidence of whether farmers are infected, and whether farmers could have played a role in the origin.
+# =============================================================================
+must_have_word = ['farmer']
+papers, rank_result = rank('Evidence of whether farmers are infected, and whether farmers could have played a role in the origin.', must_have_word)
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=False)
+
+
+# =============================================================================
+# CASE 4: Animal host(s) and any evidence of continued spill-over to humans
+# =============================================================================
+must_have_word = ['covid']
+papers, rank_result = rank('Animal host(s) and any evidence of continued spill-over to humans', must_have_word)
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
+
+
+# =============================================================================
+# CASE 5: Socioeconomic and behavioral risk factors for this spill-over
+# =============================================================================
+papers, rank_result = rank('Socioeconomic and behavioral risk factors for this spill-over')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=3, show_abstract=False, show_sentences=False)
+
+
+# =============================================================================
+# CASE 6: Sustainable risk reduction strategies
+# ================================================================= ============
+papers, rank_result = rank('Sustainable risk reduction strategies')
+
+# Print final candidates
+print('Ranked papers (document numbers):', papers)
+
+# Print results
+print_ranked_papers(rank_result, top_n=10, show_abstract=False, show_sentences=False)
+

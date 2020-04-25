@@ -1,4 +1,3 @@
-# Kaggle challenge Covid-19
 # Team: Darvirian
 # Developer: Henry Bol
 
@@ -9,9 +8,12 @@
 # PART IV: Vectorize (and calculate TF-IDF)
 # PART V: Create the worddic with per word: doc, positions in doc, TF-IDF score
 
+# CASES: Kaggle CORD-19 What do we know about virus genetics, origin, and evolution?
+# CASES: EUvsVirus Health & Life, Research
+
 # Credits:
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
-# CSV files from: https://www.kaggle.com/xhlulu/cord-19-eda-parse-json-and-generate-clean-csv
+# CORD-19 CSV files from: https://www.kaggle.com/xhlulu/cord-19-eda-parse-json-and-generate-clean-csv
 
 
 # =============================================================================
