@@ -439,6 +439,13 @@ def search_sentence(doc_number, search_words):
 ## Highlight in a text specific words in a specific color
 # return this text with the highlighted words
 
+doc_number = 219
+check = sentences[219]
+index = 0
+ranked_result = rank_result
+search_words = ['covid', 'tests', 'medication', 'vaccination', 'development']
+
+
 def highlight_words(text, words, color):
     
     # color set
@@ -471,27 +478,36 @@ def print_ranked_papers(ranked_result, top_n=3, show_abstract=True, show_sentenc
 
     # print top n result (with max number of documents from ranked_result)
     for index in range(min(top_n, len(ranked_result))):    
-       
-        ## preparation       
-        text_sentences = ranked_result.Sentences[index]
-        text_sentences = [re.sub(r'[^a-zA-Z0-9]', ' ', str(x)) for x in text_sentences]
-        # remove single characters
-        text_sentences = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for x in text_sentences]
-        # lower case words
-        text_sentences = [word.lower() for word in text_sentences]
-        # lemmatize
-        lemmatizer = WordNetLemmatizer() 
-        text_sentences = [lemmatizer.lemmatize(word) for word in text_sentences] 
-        # join all sentences and seperate by a return
-        text_sentences = '\n'.join(text_sentences)
-        # spit in seperate words
-        text_sentences_split = word_tokenize(text_sentences)
+
+        ## preparation        
         # list of search words
         search_words = list(set(ranked_result.Search_words[index]))
 
+        # preparation to display wordcloud      
+        text_sentences_wc = ranked_result.Sentences[index]
+        text_sentences_wc = [re.sub(r'[^a-zA-Z0-9]', ' ', str(x)) for x in text_sentences_wc]
+        # remove single characters
+        text_sentences_wc = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for x in text_sentences_wc]
+        # lower case words
+        text_sentences_wc = [word.lower() for word in text_sentences_wc]
+        # lemmatize
+        lemmatizer = WordNetLemmatizer() 
+        text_sentences_wc = [lemmatizer.lemmatize(word) for word in text_sentences_wc] 
+        # join all sentences and seperate by a return
+        text_sentences_wc = '\n'.join(text_sentences_wc)
+        # spit in seperate words
+        text_sentences_split_wc = word_tokenize(text_sentences_wc)
+
+        # preparation to print out sentences 
+        # join all sentences and seperate by a return
+        text_sentences = '\n'.join(ranked_result.Sentences[index])
+        # Spit in seperate words 
+        text_sentences_split = text_sentences.split()
+
+
         ## print most important items per document (paper)
         # and in case of 'nan' write 'not available'
-        
+       
         # ranking number and title
         if pd.isnull(ranked_result.Title[index]):
             print('\n\nRESULT {}:'. format(index+1), 'Title not available')
@@ -501,7 +517,7 @@ def print_ranked_papers(ranked_result, top_n=3, show_abstract=True, show_sentenc
     
         # generate cloud word
         wordcloud = WordCloud()
-        img = wordcloud.generate_from_text(' '.join(text_sentences_split))
+        img = wordcloud.generate_from_text(' '.join(text_sentences_split_wc))
         plt.imshow(img)
         plt.axis('off')
         plt.show()   
@@ -603,16 +619,17 @@ print_ranked_papers(rank_result, top_n=1, show_abstract=True, show_sentences=Tru
 # =============================================================================
 # Q1: mapping of covid literature with perspectives of tests/medication/vaccination development
 # =============================================================================
-must_have_word = ['covid']
+must_have_words = ['covid']
+must_have_words = ['covid', 'tests', 'medication', 'vaccination', 'development']
 # papers, rank_result = rank('mapping of covid literature with perspectives of tests/medication/vaccination development', must_have_word)
-papers, rank_result = rank('tests medication vaccination development', must_have_word)
+papers, rank_result = rank('tests medication vaccination development', must_have_words)
  
 
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=False)
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
 
 # Save results
 rank_result.to_excel('EUvsVirus/output/Q1.xlsx')
@@ -646,7 +663,7 @@ papers, rank_result = rank('mapping of solutions (environment map)', must_have_w
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=False)
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
 
 # Save results
 rank_result.to_excel('EUvsVirus/output/Q3.xlsx')
@@ -662,7 +679,7 @@ papers, rank_result = rank('creation of action plan to transfer learnings after 
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=False)
+print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=True)
 
 # Save results
 rank_result.to_excel('EUvsVirus/output/Q4.xlsx')
