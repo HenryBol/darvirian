@@ -1,10 +1,17 @@
 # Darvirian
 The Darvirian team: Joseph, Yao, Henry
 
-Working on a good cause!
+Working on good causes!
 
-# Challenge
-Kaggle CORD-19-research-challenge: What do we know about virus genetics, origin, and evolution?
+# EUvsVirus Challenge 
+EUvsVrius Hacakton April 24th-26th: Health & Life, Research
+- Mapping of covid literature with perspectives of tests/medication/vaccination development
+- Mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)
+https://euvsvirus.org/challenges/#health
+
+# Kaggle Challenge
+Kaggle CORD-19-research-challenge:
+- What do we know about virus genetics, origin, and evolution?
 https://www.kaggle.com/allen-institute-for-ai/CORD-19-research-challenge/tasks?taskId=567
 
 # Code
