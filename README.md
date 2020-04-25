@@ -4,14 +4,14 @@ The Darvirian team: Joseph, Yao, Henry
 Working on good causes!
 
 # EUvsVirus Challenge 
-EUvsVrius Hacakton April 24th-26th: Health & Life, Research
+EUvsVrius Hacakton April 24th-26th, topic Health & Life, Research:
 - Mapping of covid literature with perspectives of tests/medication/vaccination development
 - Mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)
 
 https://euvsvirus.org/challenges/#health
 
 # Kaggle Challenge
-Kaggle CORD-19-research-challenge:
+Kaggle CORD-19-research-challenge, topic:
 - What do we know about virus genetics, origin, and evolution?
 
 https://www.kaggle.com/allen-institute-for-ai/CORD-19-research-challenge/tasks?taskId=567
