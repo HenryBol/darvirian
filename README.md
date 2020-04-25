@@ -4,7 +4,7 @@ The Darvirian team: Joseph, Yao, Henry
 Working on good causes!
 
 # EUvsVirus Challenge 
-EUvsVrius Hacakton April 24th-26th, topic Health & Life, Research:
+EUvsVirus Hacakton April 24th-26th, topic Health & Life, Research:
 - Mapping of covid literature with perspectives of tests/medication/vaccination development
 - Mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)
 
