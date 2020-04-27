@@ -68,6 +68,16 @@ df = df.append(df_clean_pmc).reset_index(drop=True)
 ## Series plot_data with text (all documents)
 plot_data = df['text']
 
+# for i in range(len(plot_data)):
+#     if 'SARS-CoV-2' in plot_data[i]:
+#     # if 'Hal' in plot_data[i]:
+#         print(i)
+        
+# "SARS-CoV-2" in plot_data[10]
+
+# check = sentences[10]        
+# check = ''.join(item for item in check)
+
 # TODO check documents in other languages than English (e.g. German)
 
 # Create Documentnumber to PaperID table
@@ -104,7 +114,7 @@ sentences = [sent_tokenize(plot_data[i]) for i in range(len(plot_data)) if len(p
 
 
 ## Save sentences file
-f = open("Data/output/sentences_200423-2.pkl","wb")
+f = open("Data/output/sentences_200426-2.pkl","wb")
 pickle.dump(sentences, f)
 f.close()
 
@@ -122,13 +132,22 @@ plot_data = [x.replace('\n', ' ') for x in plot_data]
 # rank('Full genome phylogenetic analysis'): full genome is taken into account
 
 
+# Replace SARS-CoV-2 and Covid-19
+plot_data = [x.replace('SARS-CoV-2', 'sarscov2') for x in plot_data]
+plot_data = [x.replace('sars-cov-2', 'sarscov2') for x in plot_data]
+plot_data = [x.replace('Covid-19', 'covid19') for x in plot_data]
+plot_data = [x.replace('covid-19', 'covid19') for x in plot_data]
+
 ## Clean text
 # TODO CHANGE
 # Keep figures, letters and hyphens (hyphen gives error in worddic function)
-# plot_data = [re.sub(r'[^a-zA-Z0-9\-]', ' ', str(x)) for x in plot_data]
 plot_data = [re.sub(r'[^a-zA-Z0-9]', ' ', str(x)) for x in plot_data]
+# ADDED - to keep hyphen -> PROBLEMS later
+# plot_data = [re.sub(r'[^a-zA-Z0-9-]', ' ', str(x)) for x in plot_data]
 
-# Remove single characters
+
+# Remove single characters (not 0-9 to keep SARS-CoV-2)
+# plot_data = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for x in plot_data]
 plot_data = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for x in plot_data]
 
 # Remove punctuation (!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~)
@@ -199,14 +218,22 @@ plot_data = [[word for word in doc if word not in words_low_freq] for doc in plo
 #     plot_data = pickle.load(pickle_in)
 
 
+# "SARS-CoV-2" in plot_data[10]
+# "sars-cov-2" in plot_data[10]
+# "sars-cov-2" in texts_flattened[10]
+# word2idx["sars-cov-2"]
+
 # =============================================================================
 # PART IV: Vectorize (and calculate TF-IDF)
 # ============================================================================
 texts_flattened = [" ".join(x) for x in plot_data]
 # vectorizer = TfidfVectorizer(lowercase=True, analyzer='word', stop_words='english')
 
-# Include with token_pattern also single characters
+# Include with token_pattern also single characters but keep hyphenated
 vectorizer = TfidfVectorizer(lowercase=False, stop_words=None, token_pattern=r"(?u)\b\w+\b")
+# pattern = "(?u)\\b[\\w-]+\\b"
+# vectorizer = TfidfVectorizer(lowercase=False, stop_words=None, token_pattern=pattern)
+# vectorizer = TfidfVectorizer(lowercase=False, stop_words=None)
 vectors = vectorizer.fit_transform(texts_flattened)
 feature_names = vectorizer.get_feature_names()
 dense = vectors.todense()
@@ -214,9 +241,10 @@ dense = vectors.todense()
 
 ## Dictionary of unique words as values
 word2idx = dict(zip(feature_names, range(len(feature_names))))
+# word2idx['sars']
 
 # Save word2idx file
-f = open("Data/output/word2idx_200423-2.pkl", "wb")
+f = open("Data/output/word2idx_200426-2.pkl", "wb")
 pickle.dump(word2idx, f)
 f.close()
 
@@ -224,7 +252,7 @@ f.close()
 idx2word = {v:k for k,v in word2idx.items()}
 
 ## Save idx2word file
-f = open("Data/output/idx2word_200423-2.pkl", "wb")
+f = open("Data/output/idx2word_200426-2.pkl", "wb")
 pickle.dump(idx2word, f)
 f.close()
 
@@ -242,8 +270,23 @@ feature_names_num = [word2idx[feature] for feature in feature_names]
 df_tfidf = pd.DataFrame(dense, columns=feature_names_num)
 
 
+# check2 = plot_data_bkp[2]
+# check2 = ' '.join(item for item in check2)
+
+# # negatieve numbers creeeren NonType
+
+# check2[862] #-8
+# check2[885] #-8
+# check2[887] #-8
+
+# check = plot_data[2]
+# check = ' '.join(item for item in check)
+word2idx['covid19']
+
 ## word2idx for all words in plot_data
 plot_data = [[word2idx.get(word) for word in line] for line in plot_data]
+
+
 
 # Save plot_data_num file
 # f = open("Data/output/plot_data_200423-2.pkl", "wb")
@@ -289,8 +332,7 @@ worddic = defaultdict(list)
 time_start = time.time()
 for i,doc in enumerate(plot_data):
     # for word in set(doc): set has impact on orderscore
-    for word in set(doc):
-        
+    for word in set(doc):   
         start = 0
         word_positions = []
         end = len(doc)
@@ -305,9 +347,14 @@ for i,doc in enumerate(plot_data):
 time_end = time.time()
 print('Worddic duration:', time_end - time_start) # Worddic duration: 2199 seconds
 
+# word2idx['sarscov2']
+# worddic[256487]
+
+# text = plot_data[2]
+# text = [idx2word[i] for i in range(len(text))]
 
 ## Save pickle file
-f = open("Data/output/worddic_all_200423-2.pkl","wb")
+f = open("Data/output/worddic_all_200426-2.pkl","wb")
 pickle.dump(worddic,f)
 f.close()
 

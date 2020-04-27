@@ -8,16 +8,12 @@
 # PART IV: Function search sentence
 # PART V: Function print result (ranked papers)
 # PART VI: Examples 
-# CASES: Kaggle CORD-19 What do we know about virus genetics, origin, and evolution?
 # CASES: EUvsVirus Health & Life, Research
+# CASES: Kaggle CORD-19 What do we know about virus genetics, origin, and evolution?
 
 # Credits:
 # Inspiration: https://www.kaggle.com/amitkumarjaiswal/nlp-search-engine
 
-# TODO
-# doc 1534 has double sentences
-# check = sentences[1534]
-# check = ''.join(item for item in check)
 
 # =============================================================================
 # Import the libraries
@@ -44,19 +40,19 @@ pickle_in = open('Data/output/df.pkl', 'rb')
 df = pickle.load(pickle_in)
 
 # Load pickle file sentences
-pickle_in = open('Data/output/sentences_200423-2.pkl', 'rb')
+pickle_in = open('Data/output/sentences_200426-2.pkl', 'rb')
 sentences = pickle.load(pickle_in)
 
 # Load pickle file worddic
-pickle_in = open('Data/output/worddic_all_200423-2.pkl', 'rb')
+pickle_in = open('Data/output/worddic_all_200426-2.pkl', 'rb')
 worddic = pickle.load(pickle_in)
 
 # Load pickle file word2idx
-pickle_in = open('Data/output/word2idx_200423-2.pkl', 'rb')
+pickle_in = open('Data/output/word2idx_200426-2.pkl', 'rb')
 word2idx = pickle.load(pickle_in)
 
 # Load pickle file idx2word
-pickle_in = open('Data/output/idx2word_200423-2.pkl', 'rb')
+pickle_in = open('Data/output/idx2word_200426-2.pkl', 'rb')
 idx2word = pickle.load(pickle_in)
 
 
@@ -98,7 +94,14 @@ def search(searchsentence, must_have_words=None):
     words = [word.lower() for word in words]
                                
     # keep characters as in worddic
-    words = [re.sub(r'[^a-zA-Z]', ' ', str(w)) for w in words]
+    words = [re.sub(r'[^a-zA-Z0-9]', '', str(w)) for w in words]
+    # words = [re.sub('[^a-zA-Z0-9]+', ' ', str(w)) for w in words]
+   
+    # Remove single characters
+    # words = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for w in words]
+  
+    # remove empty characters
+    words = [word for word in words if word]
 
     # remove stopwords
     stop_words = set(stopwords.words('english'))
@@ -109,12 +112,12 @@ def search(searchsentence, must_have_words=None):
     words = [lemmatizer.lemmatize(word) for word in words]
  
     # remove duplicates
-    words = list(set(words))   
- 
+    words = list(set(words))
+    
     # keep only the words that are in the dictionary; remove words if not in word2idx 
     [print('Word not in dictionary:', word) for word in words if word not in word2idx]
     words = [word for word in words if word in word2idx]
-    
+        
     # number of words    
     numwords = len(words)
     
@@ -229,8 +232,8 @@ def search(searchsentence, must_have_words=None):
         
         # lowercase all words
         must_have_words = [word.lower() for word in must_have_words]                             
-        # keep characters as in worddic
-        must_have_words = [re.sub(r'[^a-zA-Z]', ' ', str(w)) for w in must_have_words]   
+        # keep characters as in worddic (without space)
+        must_have_words = [re.sub(r'[^a-zA-Z0-9]', '', str(w)) for w in must_have_words]   
         # lemmatize words
         lemmatizer = WordNetLemmatizer()
         must_have_words = [lemmatizer.lemmatize(word) for word in must_have_words]
@@ -239,21 +242,23 @@ def search(searchsentence, must_have_words=None):
         # keep only the words that are in the dictionary word2idx 
         must_have_words = [word2idx[word] for word in must_have_words if word in word2idx]
 
-
         # option: get list of all (unique) docs which have one of the must_have_words
         # must_have_!docs = set([doc[0] for word in must_have_words for doc in worddic_sub[word]])
 
         # option: get list of all (unique) docs which have all of the must_have_words
         # create must_have_docs from all docs with a search w
         must_have_docs = [doc[0] for word in must_have_words for doc in worddic_sub[word]]
-                
         must_have_docs_unique = Counter(must_have_docs).most_common()
         # check if overlapping documents exist (if note give a message) 
         num_musthavewords = must_have_docs_unique[0][1] # first doc has highest occurences
+        # check if no verlapping at all
         if num_musthavewords == 0: 
             print('Must have words do not have overlapping documents: search breaks')
             return
-        
+        # check if partly overlapping
+        if num_musthavewords != len(must_have_words): 
+            print('Must have words not 100% overlap: {} out of {}'.format(num_musthavewords, len(must_have_words)))
+
         else:
             # create doc list with all docs which have all must_have_words 
             must_have_docs_unique = [doc[0] for doc in must_have_docs_unique if doc[1] == num_musthavewords]      
@@ -280,10 +285,13 @@ def search(searchsentence, must_have_words=None):
 # =============================================================================
 # Create a rule based rank and return function
 
-def rank(term, must_have_word=None):
+# term = "what is correlation between SARS-CoV-2 and Alzheimer's?"
+# must_have_words = ['SARS-CoV-2', 'Alzheimer', 'correlation']
+
+def rank(term, must_have_words=None):
 
     # get results from search
-    results = search(term, must_have_word)
+    results = search(term, must_have_words)
     # get metrics
     # search words found in dictionary:
     search_words = results[1] 
@@ -300,7 +308,6 @@ def rank(term, must_have_word=None):
 
     # list of documents in order of relevance
     final_candidates = []
-
 
     ## no search term(s) not found
     if num_search_words == 0:
@@ -319,7 +326,6 @@ def rank(term, must_have_word=None):
         num_score_list.append(tfscore[0][0]) 
         # remove duplicate document numbers
         final_candidates = list(set(num_score_list)) 
-
 
     ## more than one search word (and found in dictionary)
     # ranking is based on an intelligent commbination of the scores
@@ -408,13 +414,13 @@ def search_sentence(doc_number, search_words):
     # temporarily version of document to clean
     doc = sentences[doc_number]
     # clean text
-    doc = [re.sub(r'[^a-zA-Z0-9]', ' ', str(x)) for x in doc]
+    doc = [re.sub(r'[^a-zA-Z0-9]', '', str(x)) for x in doc]
     # remove single characters
     doc = [re.sub(r'\b[a-zA-Z0-9]\b', '', str(x)) for x in doc]
     # lower case words
     doc = [word.lower() for word in doc]
     # lemmatize
-    doc = [lemmatizer.lemmatize(word) for word in doc]
+    doc = [lemmatizer.lemmatize(word) for word in doc]   
     
     for i, sentence in enumerate(doc):
        
@@ -438,13 +444,6 @@ def search_sentence(doc_number, search_words):
 # =============================================================================
 ## Highlight in a text specific words in a specific color
 # return this text with the highlighted words
-
-doc_number = 219
-check = sentences[219]
-index = 0
-ranked_result = rank_result
-search_words = ['covid', 'tests', 'medication', 'vaccination', 'development']
-
 
 def highlight_words(text, words, color):
     
@@ -556,7 +555,7 @@ def print_ranked_papers(ranked_result, top_n=3, show_abstract=True, show_sentenc
             print(highlight_words(text_sentences_split, search_words,'green'))
 
 
- =============================================================================
+# =============================================================================
 # PART VI: Examples
 # =============================================================================
 # Search return(searchsentence,words,fullcount_order,combocount_order,fullidf_order,fdic_order)
@@ -611,20 +610,19 @@ print_ranked_papers(rank_result, top_n=1, show_abstract=True, show_sentences=Tru
 
 
 
+
+
 # *****************************************************************************
-# EUvsVirus
+# # CASES: EUvsVirus Health & Life, Research
 # *****************************************************************************
 
 
 # =============================================================================
 # Q1: mapping of covid literature with perspectives of tests/medication/vaccination development
 # =============================================================================
-must_have_words = ['covid']
 must_have_words = ['covid', 'tests', 'medication', 'vaccination', 'development']
-# papers, rank_result = rank('mapping of covid literature with perspectives of tests/medication/vaccination development', must_have_word)
 papers, rank_result = rank('tests medication vaccination development', must_have_words)
  
-
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
 
@@ -634,13 +632,12 @@ print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=Tru
 # Save results
 rank_result.to_excel('EUvsVirus/output/Q1.xlsx')
 
+
 # =============================================================================
 # Q2: mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)
 # =============================================================================
 must_have_word = ['Covid']
-# papers, rank_result = rank('mapping of existing approaches (meta-narratives, for ex: support via vaccine, via prevention, via alternative medicines, etc.)', must_have_word)
 papers, rank_result = rank('mapping of existing approaches (meta-narratives, support via vaccine, via prevention, via alternative medicines, etc.)', must_have_word)
-
 
 # Print final candidates
 print('Ranked papers (document numbers):', papers)
@@ -653,10 +650,9 @@ rank_result.to_excel('EUvsVirus/output/Q2.xlsx')
 
 
 # =============================================================================
-# 03: mapping of solutions (environment map)
+# Q3: mapping of solutions (environment map)
 # =============================================================================
-# must_have_word = 'Covid' # gives a zero error (bug)
-must_have_word = None
+must_have_word = ['Covid']
 papers, rank_result = rank('mapping of solutions (environment map)', must_have_word)
 
 # Print final candidates
@@ -670,7 +666,7 @@ rank_result.to_excel('EUvsVirus/output/Q3.xlsx')
 
 
 # =============================================================================
-# 04: creation of action plan to transfer learnings after crisis
+# Q4: creation of action plan to transfer learnings after crisis
 # =============================================================================
 must_have_word = ['Covid']
 papers, rank_result = rank('creation of action plan to transfer learnings after crisis', must_have_word)
@@ -685,9 +681,213 @@ print_ranked_papers(rank_result, top_n=3, show_abstract=True, show_sentences=Tru
 rank_result.to_excel('EUvsVirus/output/Q4.xlsx')
 
 
+# =============================================================================
+# 05: EZ1
+# =============================================================================
+keywords = 'host protease inhibitors;furin inhibitors, CoV papain-like protease, main CoV-2 protease inhibitors; broad anti-virals, plant anti-viral substances, ECE2 antagonists, channel blockers, lysosomal pH, autophagy modifiers, heat stress, ER stress, immune response busters, RNA polimerase inhibitors, interleukin-1 receptor, stop cytokine storm, transfusion of covalescent plasma, stem cells to recover damaged lungs'
+papers, rank_result = rank(keywords)
+
+# Add
+# Chloroquine, hydroxy chloroquine, drug repurposing, remdesivir, computational analysis, COVID-19, network-based drug repurposing, chimeric peptide,  lectin, FDA, epitope.
+
+# Print results
+print_ranked_papers(rank_result, top_n=1, show_abstract=False, show_sentences=False)
+
+# =============================================================================
+# 05: EZ2
+# =============================================================================
+keywords = "what is correlation between SARS-CoV-2 and Alzheimer's? virus removal by autophagy; virus factories; stress granules and SARS-CoV-2; membrane channels of SARS-CoV-2 Eprotein; natural compounds as broad anti-virals applied to SARS-CoV-2; known drugs useful for SARS-CoV-2 treatment; stem cells in cancer and SARS-CoV-2"
+must_have_words = ['SARS-CoV-2']
+papers, rank_result = rank(keywords, must_have_words)
+
+# Print results
+print_ranked_papers(rank_result, top_n=10, show_abstract=False, show_sentences=False)
+
+# Save results
+rank_result.to_excel('EUvsVirus/output/EZ.xlsx')
+
+# =============================================================================
+# 05: EZ2-1
+# =============================================================================
+import sys
+stdout = sys.stdout # keep to go back
+sys.stdout = open('EUvsVirus/output/EZ2-1.txt', 'w')
+keywords = "what is correlation between SARS-CoV-2 and Alzheimer's?"
+must_have_words = ['covid-19', 'Alzheimer', 'correlation']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/EZ2-2.txt', 'w')
+keywords = "virus removal by autophagy"
+must_have_words = ['virus', 'removal', 'autophagy']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/EZ2-3.txt', 'w')
+keywords = "virus factories"
+must_have_words = ['virus', 'factories']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/EZ2-4.txt', 'w')
+keywords = "stress granules and SARS-CoV-2"
+must_have_words = ['stress', 'granules', 'SARS-CoV-2']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/EZ2-5.txt', 'w')
+keywords = "membrane channels of SARS-CoV-2 Eprotein"
+must_have_words = ['membrane', 'channels', 'SARS-CoV-2','protein']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/EZ2-6.txt', 'w')
+keywords = "natural compounds as broad anti-virals applied to SARS-CoV-2"
+must_have_words = ['natural', 'SARS-CoV-2','natural', 'broad', 'anti-virals']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/EZ2-7.txt', 'w')
+keywords = "known drugs useful for SARS-CoV-2 treatment"
+must_have_words = ['drugs', 'SARS-CoV-2','useful', 'treatment']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/EZ2-8.txt', 'w')
+keywords = "stem cells in cancer and SARS-CoV-2"
+must_have_words = ['SARS-CoV-2', 'stem', 'cells', 'cancer']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = stdout
+
+
+# =============================================================================
+# 06: RM-2
+# =============================================================================
+keywords = 'ACE2, spike protein, RBD, fusion inhibitors, S protein, epidemiology, viral shedding, evolution, positive-sense RNA,  envelop protein, mucus, vaccine, RNA, antibody, nutrients, lipid, PUFA, MUFA, EPA, AA, DHA, cryoEM, SARS, SARSCoV2'
+# must_have_words = ['SARS-CoV-2', 'spike protein', 'S protein', 'COVID-19', 'drug-repurposing', 'anti viral']
+must_have_words = ['SARS-CoV-2', 'spike','protein', 'S protein', 'COVID-19', 'drug', 'repurposing', 'anti viral']
+
+papers, rank_result = rank(keywords, must_have_words)
+
+# Print results
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+# Save results
+rank_result.to_excel('EUvsVirus/output/RM2.xlsx')
+
+# =============================================================================
+# 06: RM-4
+# =============================================================================
+
+# questions from Reshmi: 
+# 1 What is the binding efficacy between SARS-CoV-2 spike protein and ACE2?
+# 2 what is the structure of SARS-CoV2 spike protein?
+# 3 How do antiviral drugs work on SARS-CoV2?
+# 4 How do fusion inhibitors work on SARS-CoV2?
+# 5 What is the mechanism of action of fusion inhibitors of SARS-CoV-2-?
+# 6 What are the approaches to design RNA, DNA , peptide-based vaccine for SARS-CoV-2?
+# 7 Do fatty acids like AA work as antiviral and can work on SARS-CoV-2?
+# 8 What are the design principles for drug of SARS-CoV-2?
+
+import sys
+stdout = sys.stdout # keep to go back
+sys.stdout = open('EUvsVirus/output/RM4-1.txt', 'w')
+keywords = "What is the binding efficacy between SARS-CoV-2 spike protein and ACE2?"
+must_have_words = ['SARS-CoV-2', 'binding', 'efficacy', 'spike', 'protein', 'ACE2']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/RM4-2.txt', 'w')
+keywords = "what is the structure of SARS-CoV2 spike protein?"
+must_have_words = ['SARS-CoV-2', 'structure', 'spike', 'protein']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/RM4-3.txt', 'w')
+keywords = "How do antiviral drugs work on SARS-CoV2?"
+must_have_words = ['SARS-CoV-2', 'antiviral', 'drugs']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/RM4-4.txt', 'w')
+keywords = "How do fusion inhibitors work on SARS-CoV2?"
+must_have_words = ['SARS-CoV-2', 'inhibitors', 'fusion']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/RM4-5.txt', 'w')
+keywords = "What is the mechanism of action of fusion inhibitors of SARS-CoV-2-?"
+must_have_words = ['SARS-CoV-2', 'mechanism', 'action', 'fusion', 'inhibitors']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/RM4-6.txt', 'w')
+keywords = "What are the approaches to design RNA, DNA , peptide-based vaccine for SARS-CoV-2"
+must_have_words = ['SARS-CoV-2', 'approaches', 'design', 'RNA', 'DNA', 'peptide-based', 'vaccine']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/RM4-7.txt', 'w')
+keywords = "Do fatty acids like AA work as antiviral and can work on SARS-CoV-2?"
+must_have_words = ['SARS-CoV-2', 'fatty', 'acids', 'AA', 'antiviral']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = open('EUvsVirus/output/RM4-8.txt', 'w')
+keywords = "What are the design principles for drug of SARS-CoV-2?"
+must_have_words = ['SARS-CoV-2', 'design', 'principles', 'drug']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+sys.stdout = stdout
+
+
+# =============================================================================
+# 07: AL
+# =============================================================================
+# =============================================================================
+keywords = 'Emerging threat; Monoclonal Antibody, Immunotherapy, Infectious diseases; Viruses; Zoonoses; Chloroquine; Antiviral; emerging virus; highly pathogenic virus; zoonosis; zoonotic; 2019-nCoV, COVID-19, SARS-CoV-2, Coronavirus, outbreak, Coronavirus disease 2019 (COVID-19); Wuhan coronavirus; RdRp; Docking; Structural bioinformatics; Sofosbuvir; Nucleotide inhibitors; novel coronavirus; pneumonia; lopinavir; ribavirin; interferon; Cytokines; Immunomodulation; Melatonin; Oxidation-reduction; Convalescent plasma therapy; Chinese medicine; new coronavirus pneumonia; Pharmacotherapeutics; Glucocorticosteroid; Antibiotics;  2019 novel coronavirus; Antiviral therapy; Infection; Severe acute respiratory syndrome; ARDS (Acute Respiratory Distress Syndrome); Biosafety; Human coronaviruses; Immune response; Innate immune response; Live-attenuated vaccines; Virulence'
+must_have_words = None
+papers, rank_result = rank(keywords, must_have_words)
+
+# Print results
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+# Save results
+rank_result.to_excel('EUvsVirus/output/EL1.xlsx')
+
+# =============================================================================
+# 07: AL-2
+# =============================================================================
+
+# Questions from Aurora: 
+# 1 What are the differences between pneumonia, ARDS (Acute Respiratory Distress Syndrome) and SARS (Severe Acute Respiratory Syndrome) ?
+# 2 How coronavirus can provoke ARDS (Acute Respiratory Distress Syndrome) ?
+# 3 Chloroquine, Nucleotide inhibitors, lopinavir/ritonavir, etc. : drug repurposing can be the solution against the novel coronavirus ?
+
+keywords = "What are the differences between pneumonia, ARDS (Acute Respiratory Distress Syndrome) and SARS (Severe Acute Respiratory Syndrome) ?"
+must_have_words = ['differences', 'pneumonia', 'ARDS', 'SARS']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+keywords = "How coronavirus can provoke ARDS (Acute Respiratory Distress Syndrome) ?"
+must_have_words = ['coronavirus', 'provoke', 'ARDS']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+keywords = "Chloroquine, Nucleotide inhibitors, lopinavir/ritonavir, etc. : drug repurposing can be the solution against the novel coronavirus ?"
+must_have_words = ['coronavirus', 'drug', 'repurposing']
+papers, rank_result = rank(keywords, must_have_words)
+print_ranked_papers(rank_result, top_n=10, show_abstract=True, show_sentences=True)
+
+
+
+
 
 # *****************************************************************************
-# KaggleCORD-19
+# CASES: Kaggle CORD-19 What do we know about virus genetics, origin, and evolution?
 # *****************************************************************************
 
 
@@ -714,7 +914,7 @@ papers, rank_result = rank('Access to geographic and temporal diverse sample set
 print('Ranked papers (document numbers):', papers)
 
 # Print results
-print_ranked_papers(rank_result, top_n=20, show_abstract=False, show_sentences=False)
+print_ranked_papers(rank_result, top_n=20, show_abstract=True, show_sentences=False)
 
 
 # =============================================================================
@@ -778,3 +978,12 @@ print('Ranked papers (document numbers):', papers)
 # Print results
 print_ranked_papers(rank_result, top_n=10, show_abstract=False, show_sentences=False)
 
+
+
+# ## Print out temporarily to file
+# import sys
+# stdout = sys.stdout # keep to go back
+# sys.stdout = open('EUvsVirus/output/File.txt', 'w')
+
+# # go back
+# sys.stdout = stdout
