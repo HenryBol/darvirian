@@ -19,30 +19,16 @@
 # =============================================================================
 # Import the libraries
 # =============================================================================
-import re
-import pickle
-import time
-import pandas as pd
-# import numpy as np
-
-from collections import Counter
-# from collections import OrderedDict
-from collections import defaultdict
-
-import nltk
-# nltk.download('wordnet')
-
-from nltk.tokenize import word_tokenize
-from nltk.tokenize import sent_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer 
-
-#from nltk.stem.porter import PorterStemmer
-#from nltk.stem import SnowballStemmer
-
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 # TODO also full-genome (fullgenome is in but full-genome not)
+import numpy as np
+import pandas as pd
+import pickle
+import re
+
+import nltk
+from nltk import word_tokenize
+from nltk import sent_tokenize
 
 
 # =============================================================================
@@ -359,9 +345,8 @@ pickle.dump(worddic,f)
 f.close()
 
 ## Load pickle file worddic
-# if inference == 'on':
-#     pickle_in = open("Data/output/worddic_all_200415.pkl", "rb")
-#     worddic = pickle.load(pickle_in)
+# pickle_in = open("Data/output/worddic_all_200426-2.pkl", "rb")
+# worddic = pickle.load(pickle_in)
 
 # Lemmatization duration: 352.2247190475464
 # Worddic duration: 2324.3425390720367
