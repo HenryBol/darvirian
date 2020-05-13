@@ -21,7 +21,7 @@ https://www.kaggle.com/allen-institute-for-ai/CORD-19-research-challenge/tasks?t
 - Darvirian_Search_Rank_Engine: main functions of search and rank 
 
 # Data 
-CORD-19 provides the following sets with documents:
+CORD-19 uses the following sets with documents (not included in this GitHub environment):
 - biorxiv_medrxiv (1.053)
 - comm_use_subset (9.315)
 - custom_license (20.657)
