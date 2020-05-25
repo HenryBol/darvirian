@@ -25,11 +25,16 @@ import numpy as np
 import pandas as pd
 import pickle
 import re
+import json
+import time
 
 import nltk
 from nltk import word_tokenize
 from nltk import sent_tokenize
-
+from nltk.stem import WordNetLemmatizer
+from collections import Counter
+from collections import defaultdict
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 # =============================================================================
 # PART I: Load the data
@@ -37,10 +42,10 @@ from nltk import sent_tokenize
 ## Read docs from CORD-19
 # import os
 # os.chdir("../Data/CSV")
-df_biorxiv = pd.read_csv('Data/CSV/biorxiv_clean.csv')
-df_clean_comm_use = pd.read_csv('Data/CSV/clean_comm_use.csv')
-df_clean_noncomm_use = pd.read_csv('Data/CSV/clean_noncomm_use.csv')
-df_clean_pmc = pd.read_csv('Data/CSV/clean_pmc.csv')
+df_biorxiv = pd.read_csv('/Users/henrybol/Documents/GitHub_off/darvirian/Data/CSV/biorxiv_clean.csv')
+df_clean_comm_use = pd.read_csv('/Users/henrybol/Documents/GitHub_off/darvirian/Data/CSV/clean_comm_use.csv')
+df_clean_noncomm_use = pd.read_csv('/Users/henrybol/Documents/GitHub_off/darvirian/Data/CSV/clean_noncomm_use.csv')
+df_clean_pmc = pd.read_csv('/Users/henrybol/Documents/GitHub_off/darvirian/Data/CSV/clean_pmc.csv')
 
 # Add all dataframes togethers
 df = df_biorxiv.append(df_clean_comm_use).reset_index(drop=True)
@@ -98,16 +103,19 @@ duplicate_papers = df[df.paper_id.duplicated()] # None
 ## Create all docs with sentences tokenized 
 sentences = [sent_tokenize(plot_data[i]) for i in range(len(plot_data)) if len(plot_data[i]) != 0]
 
-
 ## Save sentences file
-f = open("Data/output/sentences_200426-2.pkl","wb")
-pickle.dump(sentences, f)
-f.close()
+# f = open("Data/output/sentences_200426-2.pkl","wb")
+# pickle.dump(sentences, f)
+# f.close()
 
 # Load pickle file sentences
 # if inference == 'on':
 #     pickle_in = open("Data/output/sentences_200415.pkl", "rb")
 #     sentences = pickle.load(pickle_in)
+
+# Dump to json file
+with open('sentences.json', 'w') as json_file:
+    json.dump(sentences, json_file)
 
 
 ## Replace '\n' by ' '
@@ -169,6 +177,7 @@ print('Lemmatization duration:', time_end - time_start) # Lemmatization duration
 
 
 ## Remove stop words from all docs
+from nltk.corpus import stopwords
 stop_words = set(stopwords.words('english'))
 plot_data = [[word for word in doc if word not in stop_words] for doc in plot_data]
 
@@ -230,22 +239,36 @@ word2idx = dict(zip(feature_names, range(len(feature_names))))
 # word2idx['sars']
 
 # Save word2idx file
-f = open("Data/output/word2idx_200426-2.pkl", "wb")
-pickle.dump(word2idx, f)
-f.close()
+# f = open("Data/output/word2idx_200426-2.pkl", "wb")
+# pickle.dump(word2idx, f)
+# f.close()
 
-# Dictionary with the unique words as keys
+# Load pickle file word2idx
+# if inference == 'on':
+#     pickle_in = open("Data/output/word2idx_200426-2.pkl", "rb")
+#     word2idx = pickle.load(pickle_in)
+
+# Dump to json file
+with open('word2idx.json', 'w') as json_file:
+    json.dump(word2idx, json_file)
+
+
+## Dictionary with the unique words as keys
 idx2word = {v:k for k,v in word2idx.items()}
 
 ## Save idx2word file
-f = open("Data/output/idx2word_200426-2.pkl", "wb")
-pickle.dump(idx2word, f)
-f.close()
+# f = open("Data/output/idx2word_200426-2.pkl", "wb")
+# pickle.dump(idx2word, f)
+# f.close()
 
 # Load pickle file idx2word
 # if inference == 'on':
 #     pickle_in = open("Data/output/idx2word_200415.pkl", "rb")
 #     idx2word = pickle.load(pickle_in)
+
+# Dump to json file
+with open('idx2word.json', 'w') as json_file:
+    json.dump(idx2word, json_file)
 
 
 ## word2idx all feature_names 
@@ -340,13 +363,18 @@ print('Worddic duration:', time_end - time_start) # Worddic duration: 2199 secon
 # text = [idx2word[i] for i in range(len(text))]
 
 ## Save pickle file
-f = open("Data/output/worddic_all_200426-2.pkl","wb")
-pickle.dump(worddic,f)
-f.close()
+# f = open("Data/output/worddic_all_200426-2.pkl","wb")
+# pickle.dump(worddic,f)
+# f.close()
 
 ## Load pickle file worddic
 # pickle_in = open("Data/output/worddic_all_200426-2.pkl", "rb")
 # worddic = pickle.load(pickle_in)
+
+# Dump to json file
+with open('worddic.json', 'w') as json_file:
+    json.dump(worddic, json_file)
+
 
 # Lemmatization duration: 352.2247190475464
 # Worddic duration: 2324.3425390720367
