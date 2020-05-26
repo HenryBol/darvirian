@@ -36,6 +36,7 @@ from collections import Counter
 from collections import defaultdict
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+
 # =============================================================================
 # PART I: Load the data
 # =============================================================================
