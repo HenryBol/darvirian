@@ -56,6 +56,11 @@ df = df.append(df_clean_pmc).reset_index(drop=True)
 # Select dataset (test purposes)
 # df = df_biorxiv.copy()
 
+## Save df file
+f = open("df.pkl","wb")
+pickle.dump(df, f)
+f.close()
+
 
 ## Series plot_data with text (all documents)
 plot_data = df['text']
